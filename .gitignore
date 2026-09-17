@@ -1,0 +1,6 @@
+build/
+core/.build/
+ios/Safely.xcodeproj/xcuserdata/
+ios/Safely.xcodeproj/project.xcworkspace/xcuserdata/
+.DS_Store
+*.csv

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Safely test login</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f6f7fd; font: 15px/1.5 -apple-system, "Segoe UI", sans-serif; color: #0f172a; }
+  form { width: 340px; padding: 28px; border-radius: 22px; background: #fff; box-shadow: 0 12px 40px rgba(79,70,229,.12); }
+  h1 { margin: 0 0 4px; font-size: 22px; } p { margin: 0 0 18px; color: #64748b; font-size: 13.5px; }
+  label { display: block; margin: 12px 0 5px; font-size: 13px; font-weight: 600; }
+  input { width: 100%; box-sizing: border-box; padding: 11px 13px; border-radius: 12px; border: 1.5px solid #e2e8f0; font: inherit; outline: none; transition: border-color .2s; }
+  input:focus { border-color: #6366f1; }
+  button { width: 100%; margin-top: 20px; padding: 12px; border: 0; border-radius: 12px; background: #0f172a; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  output { display: block; margin-top: 14px; font-size: 13px; color: #047857; min-height: 20px; }
+</style>
+</head>
+<body>
+  <form id="login" autocomplete="off">
+    <h1>Test login</h1>
+    <p>A harmless page for trying Safely. Nothing is sent anywhere.</p>
+    <label for="user">Username</label>
+    <input id="user" name="username" type="text" autocomplete="username">
+    <label for="pass">Password</label>
+    <input id="pass" name="password" type="password" autocomplete="current-password">
+    <button>Sign in</button>
+    <output id="out"></output>
+  </form>
+  <script>
+    document.getElementById('login').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const user = document.getElementById('user').value, pass = document.getElementById('pass').value;
+      document.getElementById('out').textContent = pass ? `Signed in as “${user}” with a ${pass.length}-character password.` : 'Enter a password first.';
+    });
+  </script>
+</body>
+</html>

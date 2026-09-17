@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Import passwords — Safely</title>
+  <link rel="icon" href="../icons/icon48.png">
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    main { max-width: 600px; margin: 0 auto; padding: 48px 20px 80px; }
+    .brand { margin-bottom: 36px; }
+    ol { margin: 0 0 4px; padding-left: 20px; color: var(--muted); }
+    ol li { margin-bottom: 6px; }
+    ol b { color: var(--ink); }
+    .drop { margin-top: 16px; padding: 34px 20px; text-align: center; border-radius: 20px; border: 2px dashed #c7d2fe; background: rgba(255, 255, 255, 0.7); cursor: pointer; transition: transform 0.25s var(--spring), border-color 0.2s, background 0.2s; }
+    .drop:hover, .drop.over { transform: scale(1.015); border-color: var(--indigo); background: #eef2ff; }
+    .drop svg { width: 40px; height: 40px; color: var(--indigo); animation: bob 2.4s ease-in-out infinite; }
+    .drop b { display: block; margin-top: 8px; font-size: 15px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+    .stat { padding: 12px; border-radius: 14px; background: #f4f6fc; text-align: center; }
+    .stat b { display: block; font-size: 24px; letter-spacing: -0.02em; }
+    .stat span { font-size: 12px; color: var(--muted); }
+    .bar { height: 10px; border-radius: 6px; background: #e0e7ff; overflow: hidden; }
+    .bar i { display: block; height: 100%; width: 0; border-radius: 6px; background: var(--grad); transition: width 0.5s ease; position: relative; overflow: hidden; }
+    .bar i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent); animation: flow 1.2s linear infinite; }
+    .preview { max-height: 190px; overflow: auto; margin: 12px -4px 0; }
+    .preview div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 4px; font-size: 13px; border-bottom: 1px solid var(--line); animation: rise 0.35s both; }
+    .preview span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .warn { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: #fffbeb; color: #92400e; font-size: 13px; }
+    @keyframes bob { 50% { transform: translateY(-6px); } }
+  </style>
+</head>
+<body>
+  <div class="aurora"><i></i><i></i><i></i></div>
+  <main>
+    <div class="brand"><img src="../icons/icon128.png" alt="">Safely</div>
+    <h1>Move your passwords to your phone</h1>
+    <p>The file is read here, encrypted for your phone and sent through the Safely Key. It is never uploaded anywhere, and nothing is deleted from Chrome.</p>
+
+    <section class="card" id="pick">
+      <ol>
+        <li>Open <b class="mono">chrome://password-manager/settings</b> and choose <b>Export passwords</b>.<br><span class="small">Safari: File → Export → Passwords. Firefox, Edge and Brave files work too.</span></li>
+        <li>Drop the downloaded <b>.csv</b> file here.</li>
+      </ol>
+      <div class="drop" id="drop" tabindex="0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15.5V4M7.5 8.5 12 4l4.5 4.5M4.5 15v3A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-3"/></svg>
+        <b>Drop your passwords .csv</b>
+        <span class="muted small">or click to choose a file</span>
+      </div>
+      <input type="file" id="file" accept=".csv,text/csv" hidden>
+      <div class="warn" id="pick-error" hidden></div>
+    </section>
+
+    <section class="card" id="review" hidden>
+      <h2><span id="found">0</span> logins found</h2>
+      <p class="small">From <span id="filename" class="mono"></span></p>
+      <div class="preview" id="preview"></div>
+      <div class="row">
+        <button class="btn ghost" id="back">Choose another file</button>
+        <button class="btn primary" id="send">Send to my phone</button>
+      </div>
+      <div class="warn" id="link-warning" hidden></div>
+    </section>
+
+    <section class="card" id="progress" hidden>
+      <h2 id="progress-title">Sending to your phone…</h2>
+      <p class="small" id="progress-text">Keep the phone and key close.</p>
+      <div class="bar"><i id="bar"></i></div>
+      <div class="stats">
+        <div class="stat"><b id="n-imported">0</b><span>new</span></div>
+        <div class="stat"><b id="n-updated">0</b><span>updated</span></div>
+        <div class="stat"><b id="n-skipped">0</b><span>already there</span></div>
+      </div>
+      <div class="warn" id="after" hidden><b>Now delete the .csv file</b> and empty the Trash — it holds every password in plain text. Your Chrome passwords were left untouched; remove them in Chrome once you trust Safely.</div>
+    </section>
+  </main>
+  <script type="module" src="import.js"></script>
+</body>
+</html>
