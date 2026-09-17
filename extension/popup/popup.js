@@ -7,9 +7,9 @@ let lookedUp = false;
 function render(status) {
   const hostOk = status.host === 'ok';
   $('n-key').classList.toggle('on', status.key);
-  $('n-phone').classList.toggle('on', status.key && status.phone);
+  $('n-phone').classList.toggle('on', status.key && status.unlocked);
   $('w-key').className = `wire ${status.key ? 'on' : hostOk ? 'seek' : ''}`;
-  $('w-phone').className = `wire ${status.key && status.phone ? 'on' : status.key ? 'seek' : ''}`;
+  $('w-phone').className = `wire ${status.key && status.unlocked ? 'on' : status.key ? 'seek' : ''}`;
 
   const pill = $('pill');
   let hint = '';
@@ -28,19 +28,19 @@ function render(status) {
   } else if (!status.key) {
     pill.className = 'pill warn';
     pill.textContent = 'Looking for key';
-    hint = 'Bring your Shlok Key close. It connects on its own.';
-  } else if (!status.phone) {
-    pill.className = 'pill warn';
-    pill.textContent = 'Phone away';
-    hint = 'Key found. Waiting for your phone to join — open Shlok once if it does not.';
+    hint = 'Bring your Shhlock Key close. It connects on its own.';
   } else if (!status.paired) {
     pill.className = 'pill warn';
     pill.textContent = 'Not paired';
-    hint = 'Everything is in reach. Pair this browser with your phone to start.';
+    hint = 'Key found. Pair this browser with the key — your phone approves it.';
+  } else if (!status.unlocked) {
+    pill.className = 'pill warn';
+    pill.textContent = 'Unlocking';
+    hint = 'Key connected, opening the vault for this browser…';
   } else {
     pill.className = 'pill good';
     pill.textContent = 'Ready';
-    hint = `Connected to ${status.phoneName || 'your phone'}${status.rssi ? ` · key signal ${status.rssi} dBm` : ''}`;
+    hint = `${status.vaultCount ?? ''} logins on your key${status.rssi ? ` · signal ${status.rssi} dBm` : ''}`;
   }
   $('hint').textContent = hint;
 
@@ -74,7 +74,7 @@ async function lookUpSite() {
     const messages = {
       none: 'No login saved for this site yet.',
       denied: 'Declined on your phone.',
-      locked: 'Unlock Shlok on your phone first.',
+      locked: 'Unlock Shhlock on your phone first.',
       timeout: 'Your phone did not answer.',
       busy: 'Too many requests — try again in a minute.',
     };

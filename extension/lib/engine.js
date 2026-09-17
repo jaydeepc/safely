@@ -1,4 +1,4 @@
-// Browser side of the Shlok protocol: pairing state machine and sealed request/response.
+// Browser side of the Shhlock protocol: pairing state machine and sealed request/response.
 // Transport and storage are injected, so the service worker and the Node end-to-end test share it.
 
 import * as P from './protocol.js';
@@ -97,6 +97,13 @@ export class BrowserEngine {
     });
   }
 
+  /** Opens the vault on the key with this browser's secret. Call after every connection. */
+  async unlock() {
+    const pairing = await this.getPairing();
+    if (!pairing?.secret) return null;
+    return this.request({ t: 'unlock', secret: P.toBase64(pairing.secret) }, 10000).catch(() => null);
+  }
+
   async unpair() {
     const pairing = await this.getPairing();
     if (!pairing) return;
@@ -129,10 +136,10 @@ export class BrowserEngine {
       stage: 'waiting-phone',
       userConfirmed: false,
       phoneConfirmed: false,
-      timer: setTimeout(() => this.#failPairing('The phone did not answer. Is Shlok open on “Pair a browser”?'), 60000),
+      timer: setTimeout(() => this.#failPairing('The key did not answer. Is it powered, and is Shhlock open on your phone to approve this computer?'), 90000),
     };
-    const sent = this.io.send(P.plainEnvelope({ t: 'pair_commit', commit: P.toBase64(keys.commit), name: browserName }));
-    if (!sent) this.#failPairing('Your Shlok Key is not connected.');
+    const sent = this.io.send(P.plainEnvelope({ t: 'pair_commit', commit: P.toBase64(keys.commit), name: browserName, role: 'computer' }));
+    if (!sent) this.#failPairing('Your Shhlock Key is not connected.');
   }
 
   confirmPairing() {
@@ -165,11 +172,13 @@ export class BrowserEngine {
       } catch {
         return this.#failPairing('The phone sent an invalid key.');
       }
-      s.phoneName = String(message.name || 'Phone').slice(0, 60);
+      s.phoneName = String(message.name || 'Shhlock Key').slice(0, 60);
       s.code = await P.sas(s.publicKey, phonePublicKey, s.nonce);
       s.stage = 'compare';
       this.io.send(P.plainEnvelope({ t: 'pair_reveal', pub: P.toBase64(s.publicKey), nonce: P.toBase64(s.nonce) }));
       this.io.onPairingEvent?.(this.pairingSnapshot());
+    } else if (message.t === 'pair_button') {
+      // only phones are asked for the button; nothing to do for a browser
     } else if (message.t === 'pair_cancel') {
       this.#failPairing(message.reason || 'Pairing was rejected on the phone.');
     }
@@ -180,10 +189,12 @@ export class BrowserEngine {
     if (!s) return;
     if (s.userConfirmed && s.phoneConfirmed) {
       clearTimeout(s.timer);
-      this.pairing = { keyId: s.keyId, key: s.key, phoneName: s.phoneName, pairedAt: Date.now(), lastCtr: s.lastCtr || 0 };
+      this.pairing = { keyId: s.keyId, key: s.key, secret: s.secret, phoneName: s.phoneName, pairedAt: Date.now(), lastCtr: s.lastCtr || 0 };
       await this.io.savePairing(this.pairing);
       this.pairState = null;
       this.io.onPairingEvent?.({ stage: 'done', phoneName: this.pairing.phoneName });
+      // hand the key the secret that unlocks the vault for this browser
+      this.request({ t: 'enroll', secret: P.toBase64(s.secret) }, 20000).catch(() => {});
     } else {
       this.io.onPairingEvent?.(this.pairingSnapshot());
     }

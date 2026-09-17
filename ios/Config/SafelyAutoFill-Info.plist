@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Shlok</string>
+	<string>Shhlock</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Shlok uses Face ID before it fills a password.</string>
+	<string>Shhlock uses Face ID before it fills a password.</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

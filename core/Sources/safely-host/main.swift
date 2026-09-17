@@ -1,4 +1,4 @@
-// safely-host — Chrome native messaging host.
+// safely-host — Chrome native messaging host (optional; the Chrome extension's Bluetooth pipe to the key).
 //
 // Chrome extensions cannot hold a Bluetooth connection in the background, so this small helper
 // does it for them. It is a dumb pipe: it moves opaque envelopes between the extension (stdin/stdout,

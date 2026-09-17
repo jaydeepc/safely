@@ -53,20 +53,18 @@ struct VaultView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Vault").font(.rounded(34, .bold)).foregroundStyle(Theme.ink)
-                Text("\(vault.items.count) logins, only on this phone")
+                Text("Vault").font(.system(size: 30, weight: .bold)).foregroundStyle(Theme.ink)
+                Text("\(vault.items.count) logins on this phone and your key")
                     .font(.rounded(14, .medium)).foregroundStyle(Theme.muted)
                     .contentTransition(.numericText())
             }
             Spacer()
-            BouncyMascot(size: 58)
             Button { adding = true } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
-                    .background(Theme.grapeGradient, in: Circle())
-                    .shadow(color: Theme.grape.opacity(0.35), radius: 10, y: 5)
+                    .background(Theme.primary, in: Circle())
             }
             .buttonStyle(PressableRowStyle())
         }
@@ -74,19 +72,22 @@ struct VaultView: View {
     }
 
     private var linkCard: some View {
-        VStack(spacing: 12) {
-            LinkChain(state: model.linkState)
-            LinkStatusPill(state: model.linkState)
-            if let fill = model.lastFill {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.green)
-                    Text("Just filled \(fill.site)").font(.rounded(13, .medium)).foregroundStyle(Theme.muted)
-                }
-                .transition(.scale.combined(with: .opacity))
+        HStack(spacing: 12) {
+            Image(systemName: model.key.unlocked ? "key.horizontal.fill" : "key.horizontal")
+                .font(.system(size: 16, weight: .medium)).foregroundStyle(model.key.unlocked ? .white : Theme.muted)
+                .frame(width: 38, height: 38)
+                .background(model.key.unlocked ? AnyShapeStyle(Theme.navyGradient) : AnyShapeStyle(Theme.field), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.paired ? (model.key.unlocked ? "Key connected" : model.linkState.keyConnected ? "Key connected — unlocking" : "Key not in reach") : "No key paired yet")
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text(model.key.unlocked ? "\(model.key.vaultCount ?? 0) logins on the key · synced \(model.key.lastSync.map { $0.formatted(.relative(presentation: .named)) } ?? "just now")"
+                     : model.paired ? "Your computers keep working from the key" : "Pair it from the Key tab")
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.muted).lineLimit(1)
             }
+            Spacer()
+            Circle().fill(model.key.unlocked ? Theme.green : model.linkState.keyConnected ? Theme.primary : Theme.amber).frame(width: 8, height: 8)
         }
-        .frame(maxWidth: .infinity)
-        .card(padding: 18)
+        .card(padding: 12)
         .staggered(1, shown: shown)
     }
 
@@ -103,13 +104,14 @@ struct VaultView: View {
         }
         .font(.rounded(16, .medium))
         .padding(.horizontal, 16).padding(.vertical, 13)
-        .background(.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.line, lineWidth: 1))
         .staggered(2, shown: shown)
     }
 
     private var emptyState: some View {
         VStack(spacing: 14) {
-            BouncyMascot(pose: .empty, size: 190)
+            LockGlyph(size: 90)
             Text("Nothing here yet").font(.rounded(20, .bold)).foregroundStyle(Theme.ink)
             Text("Tap + to add a login, or import everything from Chrome or Safari in Settings.")
                 .font(.rounded(15, .medium)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)

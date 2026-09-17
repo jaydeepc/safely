@@ -7,12 +7,14 @@ let package = Package(
     products: [
         .library(name: "SafelyCore", targets: ["SafelyCore"]),
         .executable(name: "safely-host", targets: ["safely-host"]),
-        .executable(name: "safely-simphone", targets: ["safely-simphone"]),
+        .executable(name: "shhlock-keytest", targets: ["shhlock-keytest"]),
+        .executable(name: "ShhlockMac", targets: ["ShhlockMac"]),
     ],
     targets: [
         .target(name: "SafelyCore"),
         .executableTarget(name: "safely-host", dependencies: ["SafelyCore"]),
-        .executableTarget(name: "safely-simphone", dependencies: ["SafelyCore"]),
+        .executableTarget(name: "shhlock-keytest", dependencies: ["SafelyCore"]),
+        .executableTarget(name: "ShhlockMac", dependencies: ["SafelyCore"]),
         .testTarget(name: "SafelyCoreTests", dependencies: ["SafelyCore"]),
     ],
     swiftLanguageVersions: [.v5]

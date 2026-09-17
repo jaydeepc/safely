@@ -1,21 +1,22 @@
+import SafelyCore
 import SwiftUI
 
 enum AppTab: String, CaseIterable {
-    case vault, devices, activity, settings
+    case vault, key, activity, settings
 
     var title: String { rawValue.capitalized }
     var gradient: LinearGradient {
         switch self {
         case .vault: return Theme.gradient
-        case .devices: return Theme.skyGradient
+        case .key: return Theme.skyGradient
         case .activity: return Theme.sunnyGradient
         case .settings: return Theme.grapeGradient
         }
     }
     var symbol: String {
         switch self {
-        case .vault: return "lock.shield.fill"
-        case .devices: return "dot.radiowaves.left.and.right"
+        case .vault: return "lock.fill"
+        case .key: return "key.horizontal"
         case .activity: return "bolt.fill"
         case .settings: return "slider.horizontal.3"
         }
@@ -45,11 +46,8 @@ struct RootView: View {
                 OnboardingView()
             } else if Self.demoScreen == "lock" {
                 LockView()
-            } else if Self.demoScreen == "paired" {
-                VStack(spacing: 18) {
-                    SuccessBurst()
-                    Text("Paired").font(.rounded(28, .bold)).foregroundStyle(Theme.ink)
-                }
+            } else if Self.demoScreen == "approve" {
+                ApprovalSheet(request: ApprovalRequest(id: "demo", code: "482913", name: "Jaydeep's MacBook Pro"))
             } else if !settings.onboarded && !AppModel.isDemo {
                 OnboardingView().transition(.opacity)
             } else {
@@ -62,13 +60,13 @@ struct RootView: View {
 
             // Hide the vault in the app switcher
             if scenePhase != .active && !model.isLocked {
-                Rectangle().fill(.ultraThinMaterial).ignoresSafeArea().overlay(Mascot(size: 130))
+                Rectangle().fill(.ultraThinMaterial).ignoresSafeArea().overlay(LockTile(size: 96))
             }
         }
-        .sheet(item: $model.approval) { pending in
-            ApprovalSheet(pending: pending)
+        .sheet(item: $model.approval) { request in
+            ApprovalSheet(request: request)
                 .presentationDetents([.medium])
-                .presentationCornerRadius(34)
+                .presentationCornerRadius(28)
                 .interactiveDismissDisabled()
         }
     }
@@ -78,7 +76,7 @@ struct RootView: View {
             Group {
                 switch tab {
                 case .vault: VaultView()
-                case .devices: DevicesView()
+                case .key: KeyView()
                 case .activity: ActivityView()
                 case .settings: SettingsView()
                 }
@@ -109,8 +107,7 @@ struct RootView: View {
                     .padding(.horizontal, tab == item ? 18 : 14)
                     .background {
                         if tab == item {
-                            Capsule().fill(item.gradient).matchedGeometryEffect(id: "tab", in: tabSpace)
-                                .shadow(color: Theme.primaryDeep.opacity(0.28), radius: 10, y: 5)
+                            Capsule().fill(Theme.navy).matchedGeometryEffect(id: "tab", in: tabSpace)
                         }
                     }
                 }
@@ -119,8 +116,9 @@ struct RootView: View {
             }
         }
         .padding(6)
-        .background(.white.opacity(0.94), in: Capsule())
-        .shadow(color: Theme.primaryDeep.opacity(0.14), radius: 22, y: 10)
+        .background(Theme.surface, in: Capsule())
+        .overlay(Capsule().stroke(Theme.line, lineWidth: 1))
+        .shadow(color: Theme.navy.opacity(0.10), radius: 18, y: 8)
         .padding(.bottom, 6)
     }
 }
@@ -134,19 +132,12 @@ struct LockView: View {
             AuroraBackground()
             VStack(spacing: 22) {
                 Spacer()
-                ZStack {
-                    ForEach(0..<3) { ring in
-                        Circle()
-                            .stroke([Theme.primary, Theme.tangerine, Theme.grape][ring].opacity(0.30 - Double(ring) * 0.07), lineWidth: 2)
-                            .frame(width: 230 + CGFloat(ring) * 56, height: 230 + CGFloat(ring) * 56)
-                            .scaleEffect(breathe ? 1.06 : 0.94)
-                            .animation(.easeInOut(duration: 2.4).repeatForever().delay(Double(ring) * 0.25), value: breathe)
-                    }
-                    BouncyMascot(size: 190)
-                }
+                LockTile(size: 120)
+                    .scaleEffect(breathe ? 1.02 : 0.98)
+                    .animation(.easeInOut(duration: 2.6).repeatForever(), value: breathe)
                 VStack(spacing: 6) {
-                    Text("Shlok").font(.rounded(34, .bold)).foregroundStyle(Theme.ink)
-                    Text("Shh… your vault is locked").font(.rounded(16, .medium)).foregroundStyle(Theme.muted)
+                    Text("Shhlock").font(.system(size: 30, weight: .bold)).foregroundStyle(Theme.ink)
+                    Text("Your vault is locked").font(.system(size: 15)).foregroundStyle(Theme.muted)
                 }
                 Spacer()
                 Button {

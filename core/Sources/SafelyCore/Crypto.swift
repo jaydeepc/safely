@@ -24,11 +24,18 @@ public struct Identity {
 }
 
 public enum SafelyCrypto {
-    static let sessionSalt = Data("safely/v1/session".utf8)
-    static let commitLabel = Data("safely/v1/commit".utf8)
-    static let sasLabel = Data("safely/v1/sas".utf8)
+    static let sessionSalt = Data("shhlock/v2/session".utf8)
+    static let commitLabel = Data("shhlock/v2/commit".utf8)
+    static let sasLabel = Data("shhlock/v2/sas".utf8)
 
-    /// A pairing is addressed by the first 8 bytes of SHA-256(browser public key).
+    static let wrapSalt = Data("shhlock/v2/wrap".utf8)
+
+    /// The key that wraps the vault key on the Shhlock Key, derived from a secret only this device holds.
+    public static func wrapKey(secret: Data, keyId: Data) -> SymmetricKey {
+        HKDF<SHA256>.deriveKey(inputKeyMaterial: SymmetricKey(data: secret), salt: wrapSalt, info: keyId, outputByteCount: 32)
+    }
+
+    /// A pairing is addressed by the first 8 bytes of SHA-256(client public key).
     public static func keyId(forBrowserPublicKey pub: Data) -> Data {
         Data(SHA256.hash(data: pub).prefix(8))
     }

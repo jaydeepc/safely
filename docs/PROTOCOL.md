@@ -1,34 +1,23 @@
-# Shlok protocol v1
+# Shhlock protocol v2
 
-Implementations: `core/Sources/SafelyCore` (Swift — phone, helper) and `extension/lib` (JavaScript — browser).
-`scripts/protocol-test.mjs` runs one against the other.
+The key is the server. Devices (a phone, computers) are clients. Implementations: `firmware/shhlock_key/engine.h`
+(C++, the key), `core/Sources/SafelyCore/KeyClient.swift` (phone, Mac), `extension/lib/engine.js` (Chrome).
+`shhlock-keytest` runs the Swift client against a real key over USB serial.
 
-## 1. Transport: the Shlok Key (GATT)
+## 1. Transport: GATT
 
-Service `5AFE0001-7A3C-4B1E-9D2F-C0DE5AFE1A00`. Characteristic UUIDs differ in the fourth hex group.
+Service `5AFE0001-7A3C-4B1E-9D2F-C0DE5AFE1A00`; characteristics differ in the second group.
 
 | UUID | Name | Properties | Used by |
 | --- | --- | --- | --- |
 | `…0002` | PHONE_RX | write | phone → key |
 | `…0003` | PHONE_TX | notify | key → phone |
-| `…0004` | BROWSER_RX | write | browser → key |
-| `…0005` | BROWSER_TX | notify | key → browser |
-| `…0006` | STATUS | read, notify | bit 0 = a phone is subscribed, bit 1 = a browser is subscribed |
+| `…0004` | COMPUTER_RX | write | computer → key |
+| `…0005` | COMPUTER_TX | notify | key → computer |
+| `…0006` | STATUS | read, notify | bit0 phone subscribed · bit1 computer subscribed · bit2 vault unlocked · bit3 waiting for the button |
 
-The key copies every write on `BROWSER_RX` to a notification on `PHONE_TX` and every write on `PHONE_RX` to
-`BROWSER_TX`. It does not parse, store or reorder frames. Roles follow from the characteristic used, so up to
-three centrals (one phone, two browsers) can be attached at once.
-
-### Frames
-
-A message (an *envelope*, below) is split into frames of at most 160 bytes:
-
-```
-[msgId u8][index u8][total u8][payload ≤ 157 bytes]
-```
-
-`msgId` increments per sender, `index` counts from 0. Largest message: 255 × 157 = 40 035 bytes. Frames are
-written with response, so they arrive in order; receivers reassemble per `msgId` and drop partial messages after 30 s.
+Replies go back on the connection the request came from. Frames: `[msgId u8][index u8][total u8] + ≤157 bytes`;
+max message 40 035 bytes.
 
 ## 2. Envelopes
 
@@ -37,57 +26,57 @@ plain   0x01 ‖ JSON                                   pairing only
 sealed  0x02 ‖ keyId[8] ‖ nonce[12] ‖ ciphertext ‖ tag[16]
 ```
 
-- `keyId` = first 8 bytes of SHA-256(browser public key). It names the pairing in both directions.
-- Sealed body: AES-256-GCM, random nonce, the 9 header bytes as additional authenticated data.
-- Keys are P-256, encoded as 65 byte uncompressed points, base64 inside JSON.
-- Session key = HKDF-SHA256(ECDH shared secret, salt `"safely/v1/session"`, info = browserPub ‖ phonePub, 32 bytes).
-
-Every sealed JSON carries `ctr` — milliseconds since 1970, strictly increasing per sender. A receiver stores the
-highest `ctr` it accepted per pairing and silently drops anything not greater. Replies echo the request `id`.
+`keyId` = SHA-256(device public key)[0..8]. AES-256-GCM with the 9 header bytes as AAD.
+Session key = HKDF-SHA256(ECDH(x), salt `shhlock/v2/session`, info = devicePub ‖ keyPub). Every sealed JSON carries
+`ctr` (ms since 1970, strictly increasing per sender; the key persists the last accepted value per device).
 
 ## 3. Pairing
 
-The person opens **Pair a browser** on the phone (otherwise the phone answers `pair_cancel`).
-
 ```
-browser                                            phone
-  │ pair_commit { commit, name }                     │  commit = SHA256("safely/v1/commit" ‖ pubB ‖ nonce)
-  │ ───────────────────────────────────────────────▶ │
-  │                         pair_pub { pub, name }   │
-  │ ◀─────────────────────────────────────────────── │
-  │ pair_reveal { pub, nonce }                       │  phone verifies the commitment
-  │ ───────────────────────────────────────────────▶ │
-  │      both display  SAS = uint32(SHA256("safely/v1/sas" ‖ pubB ‖ pubP ‖ nonce)[0..4]) mod 10⁶
-  │                  sealed pair_confirm { name }    │  after "They match" on the phone
-  │ ◀─────────────────────────────────────────────── │
+device                                                      key
+  │ pair_commit { commit, name, role: "phone"|"computer" }    │  commit = SHA256("shhlock/v2/commit" ‖ pub ‖ nonce)
+  │ ─────────────────────────────────────────────────────────▶│
+  │           (phone) pair_button   — press the key's button   │  physical proof for the phone
+  │ ◀───────────────────────────────────────────────────────  │
+  │                              pair_pub { pub, name }        │
+  │ ◀─────────────────────────────────────────────────────────│
+  │ pair_reveal { pub, nonce }                                 │  key checks the commitment, derives the session
+  │ ─────────────────────────────────────────────────────────▶│
+  │      (computer) key → phone, sealed: approve { target, code, name }
+  │      code = SAS = uint32(SHA256("shhlock/v2/sas" ‖ devicePub ‖ keyPub ‖ nonce)[0..4]) mod 10⁶ — computer shows it too
+  │      phone → key, sealed: approve_reply { target, ok }
+  │                       sealed pair_confirm { name, vaultCount, unlocked }
+  │ ◀─────────────────────────────────────────────────────────│
+  │ sealed enroll { secret }                                   │  32 random bytes; the key stores
+  │ ─────────────────────────────────────────────────────────▶│  wrap = GCM(HKDF(secret, "shhlock/v2/wrap", keyId), vaultKey)
 ```
 
-The browser stores the pairing only after *its* user confirmed the code **and** a valid `pair_confirm` arrived.
-Because the browser is committed to its key before it learns the phone's key, an attacker in the middle gets one
-blind guess at a 1 in 1 000 000 collision.
+The first phone's `enroll` also mints the vault key. Up to 10 devices. `pair_cancel { reason }` aborts from either side.
 
-## 4. Sealed messages
+## 4. Unlocking
 
-| `t` | Direction | Fields | Reply |
+After every connection a device sends sealed `unlock { secret }`. The key unwraps the vault key into RAM, loads the vault,
+answers `ack { status: ok|denied, vaultCount }`. Any other request on a locked vault gets `status: "locked"`. Power loss locks it.
+
+## 5. Requests (sealed)
+
+| `t` | Who | Fields | Reply |
 | --- | --- | --- | --- |
-| `get` | browser → phone | `origin`, `url` (origin + path, no query), `reason`: `auto` \| `user` | `creds` |
-| `creds` | phone → browser | `status`: `ok` \| `none` \| `denied` \| `locked` \| `busy`, `items[]` | |
-| `save` | browser → phone | `origin`, `item` | `ack` |
-| `import` | browser → phone | `batch`, `totalBatches`, `items[]` (≈ 6 KB per batch) | `ack` with `imported`, `updated`, `skipped`, `vaultCount` |
-| `ping` | browser → phone | | `pong` with `name`, `vaultCount` |
-| `unpair` | either | | none — the receiver deletes the pairing |
+| `get` | any | `origin`, `reason` | `creds { status: ok|none|locked, items[] }` — exact host first, then registrable domain |
+| `save` | any | `origin`, `item` | `ack { imported, updated, skipped, vaultCount }` |
+| `import` | any | `batch`, `totalBatches`, `items[]` | `ack` |
+| `vault_pull` | phone | `offset`, `limit` | `vault_items { items[], offset, total }` |
+| `vault_put` | phone | `batch`, `totalBatches`, `items[]` | `ack` — replaces the whole vault at the last batch |
+| `clients_list` | phone | | `clients { clients: [{ id, name, role }] }` |
+| `clients_remove` | phone | `target` | `ack` |
+| `wipe` | phone | | `ack`, then factory reset |
+| `ping` | any | | `pong { name, vaultCount, unlocked }` |
+| `unpair` | any | | none — the key forgets the sender |
 
-`items[]` entries: `{ id?, title, url, username, password, notes? }`.
+Items: `{ id, title, url, username, password, notes?, updatedAt? }` (`updatedAt` in seconds; the phone keeps the newer side on sync).
 
-The phone matches `origin` against the vault by registrable domain (exact host first, then most recently used),
-treating shared-hosting suffixes (`github.io`, `vercel.app`, …) as public suffixes. It answers at most 40 `get`
-requests per minute per browser.
+## 6. Storage on the key
 
-## 5. Helper ⇄ extension (Chrome native messaging, host `app.safely.host`)
-
-```
-extension → helper   {"type":"tx","data":"<base64 envelope>"}      {"type":"status?"}
-helper → extension   {"type":"rx","data":"<base64 envelope>"}      {"type":"status","bluetooth":"on","key":true,"phone":true,"rssi":-52}
-```
-
-The helper frames, reassembles and reconnects. It holds no keys.
+- NVS `shhlock/idpriv`: P-256 private key. NVS `shhlock/clients`: JSON of paired devices (id, pub, wrap, ctr, role, name).
+- LittleFS `/vault.bin`: nonce ‖ AES-256-GCM(vault JSON) ‖ tag, AAD `shhlock/v2/vault`.
+- Button: short press confirms a phone pairing; 8 s hold = factory reset.

@@ -17,37 +17,10 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Settings").font(.rounded(34, .bold)).foregroundStyle(Theme.ink).staggered(0, shown: shown)
-
-                section("WHEN A BROWSER ASKS", index: 1) {
-                    ForEach(FillPolicy.allCases) { policy in
-                        Button {
-                            withAnimation(Theme.spring) { settings.fillPolicy = policy }
-                            if policy == .ask { model.requestNotificationPermission() }
-                        } label: {
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: settings.fillPolicy == policy ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 22))
-                                    .foregroundStyle(settings.fillPolicy == policy ? AnyShapeStyle(Theme.gradient) : AnyShapeStyle(Theme.muted.opacity(0.4)))
-                                    .contentTransition(.symbolEffect(.replace))
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(policy.title).font(.rounded(16)).foregroundStyle(Theme.ink)
-                                    Text(policy.blurb).font(.rounded(13, .medium)).foregroundStyle(Theme.muted).multilineTextAlignment(.leading)
-                                }
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.vertical, 6)
-                        }
-                        .buttonStyle(.plain)
-                        .sensoryFeedback(.selection, trigger: settings.fillPolicyRaw)
-                    }
-                }
+                Text("Settings").font(.system(size: 30, weight: .bold)).foregroundStyle(Theme.ink).staggered(0, shown: shown)
 
                 section("SECURITY", index: 2) {
-                    toggle("Lock with Face ID", "Ask when the app opens and after 45 s away", symbol: "faceid", tint: Theme.grape, isOn: $settings.appLock)
-                    Divider()
-                    toggle("Tell me about every fill", "A quiet notification while the app is closed", symbol: "bell.badge.fill", tint: Theme.tangerine, isOn: $settings.notifyOnFill)
-                        .onChange(of: settings.notifyOnFill) { _, on in if on { model.requestNotificationPermission() } }
+                    toggle("Lock with Face ID", "Ask when the app opens and after 45 s away", symbol: "faceid", tint: Theme.primary, isOn: $settings.appLock)
                 }
 
                 section("YOUR PASSWORDS", index: 3) {
@@ -59,7 +32,7 @@ struct SettingsView: View {
                         }
                     }
                     Divider()
-                    action("Fill in apps and Safari", "Settings → General → AutoFill & Passwords → Shlok", symbol: "rectangle.and.pencil.and.ellipsis", tint: Theme.pink) {
+                    action("Fill in apps and Safari", "Settings → General → AutoFill & Passwords → Shhlock", symbol: "rectangle.and.pencil.and.ellipsis", tint: Theme.teal) {
                         if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                     }
                 }
@@ -70,7 +43,7 @@ struct SettingsView: View {
                     action("Clear activity", "Forget the history shown on the Activity tab", symbol: "clock.arrow.circlepath", tint: Theme.rose) { activity.clear() }
                 }
 
-                Text("Shlok 1.0 · Passwords are encrypted with AES-256 and the key never leaves this iPhone. The Shlok Key only relays sealed messages.")
+                Text("Shhlock 2.0 · Your vault is AES-256 encrypted on this iPhone and on the key. The key only opens for devices you paired.")
                     .font(.rounded(12, .medium)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity).padding(.top, 6)
                     .staggered(5, shown: shown)
@@ -88,7 +61,7 @@ struct SettingsView: View {
             withAnimation(Theme.spring) { importResult = model.importCSV(text) }
         }
         .fileExporter(isPresented: .init(get: { exportFile != nil }, set: { if !$0 { exportFile = nil } }),
-                      document: exportFile, contentType: .commaSeparatedText, defaultFilename: "Shlok backup") { _ in exportFile = nil }
+                      document: exportFile, contentType: .commaSeparatedText, defaultFilename: "Shhlock backup") { _ in exportFile = nil }
         .alert("Import finished", isPresented: .init(get: { importResult != nil }, set: { if !$0 { importResult = nil } })) {
             Button("OK") {}
         } message: {
@@ -169,10 +142,10 @@ struct OnboardingView: View {
     @State private var page = 0
     @State private var shown = false
 
-    private let pages: [(Mascot.Pose, String, String)] = [
-        (.phone, "Your passwords,\nonly on your phone", "Not in Chrome. Not in a cloud. Encrypted on this iPhone and nowhere else."),
-        (.key, "A key in your pocket", "Your Shlok Key links this phone to your browser over Bluetooth. It carries sealed messages and can read none of them."),
-        (.magic, "Walk up. It fills.\nWalk away. It's gone.", "Open a login page with your key nearby and the form fills itself. Leave, and the browser knows nothing."),
+    private let pages: [(String, String, String)] = [
+        ("key.horizontal", "Your passwords,\non a key you carry", "Encrypted on the Shhlock Key in your pocket and on this iPhone. Not in a browser, not in a cloud."),
+        ("laptopcomputer.and.iphone", "Walk up to any computer", "Shhlock for Mac fills logins in any browser while the key is near. No phone needed — this app just manages the vault."),
+        ("checkmark.shield", "You decide who may use it", "New computers need your approval here, with a code you compare. Lose the key, and it is unreadable without a paired device."),
     ]
 
     var body: some View {
@@ -181,11 +154,17 @@ struct OnboardingView: View {
                 ForEach(pages.indices, id: \.self) { index in
                     VStack(spacing: 22) {
                         Spacer()
-                        BouncyMascot(pose: pages[index].0, size: 250)
-                            .scaleEffect(page == index && shown ? 1 : 0.6)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 40, style: .continuous).fill(Theme.navyGradient).frame(width: 150, height: 150)
+                                .shadow(color: Theme.navy.opacity(0.25), radius: 24, y: 12)
+                            if index == 0 { LockGlyph(size: 96) } else {
+                                Image(systemName: pages[index].0).font(.system(size: 60, weight: .medium)).foregroundStyle(.white)
+                            }
+                        }
+                        .scaleEffect(page == index && shown ? 1 : 0.8)
                             .animation(.spring(response: 0.6, dampingFraction: 0.6), value: page)
-                        Text(pages[index].1).font(.rounded(30, .bold)).foregroundStyle(Theme.ink).multilineTextAlignment(.center)
-                        Text(pages[index].2).font(.rounded(16, .medium)).foregroundStyle(Theme.muted).multilineTextAlignment(.center).padding(.horizontal, 12)
+                        Text(pages[index].1).font(.system(size: 28, weight: .bold)).foregroundStyle(Theme.ink).multilineTextAlignment(.center)
+                        Text(pages[index].2).font(.system(size: 16)).foregroundStyle(Theme.muted).multilineTextAlignment(.center).padding(.horizontal, 12)
                         Spacer()
                         Spacer()
                     }
@@ -197,7 +176,7 @@ struct OnboardingView: View {
 
             HStack(spacing: 7) {
                 ForEach(pages.indices, id: \.self) { index in
-                    Capsule().fill(index == page ? AnyShapeStyle(Theme.gradient) : AnyShapeStyle(Theme.muted.opacity(0.25)))
+                    Capsule().fill(index == page ? AnyShapeStyle(Theme.primary) : AnyShapeStyle(Theme.line))
                         .frame(width: index == page ? 26 : 8, height: 8)
                 }
             }

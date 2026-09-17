@@ -10,7 +10,6 @@ struct SafelyApp: App {
             RootView()
                 .environmentObject(model)
                 .environmentObject(model.vault)
-                .environmentObject(model.browsers)
                 .environmentObject(model.activity)
                 .environmentObject(model.settings)
                 .preferredColorScheme(.light)

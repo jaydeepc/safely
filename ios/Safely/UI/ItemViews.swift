@@ -252,7 +252,7 @@ struct ItemEditor: View {
                                     .font(.system(size: 17, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: 42, height: 42)
-                                    .background(Theme.grapeGradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .background(Theme.primary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                     .rotationEffect(.degrees(spin))
                             }
                             .sensoryFeedback(.impact, trigger: spin)

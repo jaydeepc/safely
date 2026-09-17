@@ -1,5 +1,5 @@
-// Shlok content script: finds login forms, asks the service worker for credentials (which asks the
-// phone through the Shlok Key), fills them, and offers to save logins that were typed by hand.
+// Shhlock content script: finds login forms, asks the service worker for credentials (which asks the
+// phone through the Shhlock Key), fills them, and offers to save logins that were typed by hand.
 // All UI lives in a closed shadow root so pages cannot read or restyle it.
 
 (() => {
@@ -100,7 +100,7 @@
     if (target.username && item.username) setValue(target.username, item.username);
     if (target.password) setValue(target.password, item.password);
     hideChooser();
-    if (announce) toast('Filled by Shlok', item.username || item.title);
+    if (announce) toast('Filled by Shhlock', item.username || item.title);
     return true;
   }
 
@@ -265,7 +265,7 @@
     if (!badge) {
       badge = el('button', 'badge');
       badge.type = 'button';
-      badge.title = 'Shlok';
+      badge.title = 'Shhlock';
       badge.addEventListener('mousedown', (event) => event.preventDefault()); // keep focus in the field
       badge.addEventListener('click', () => {
         if (chooser) hideChooser();
@@ -281,14 +281,14 @@
   }
 
   const NOTES = {
-    none: ['No saved login for this site.', 'Sign in once and Shlok will offer to keep it on your phone.'],
-    offline: ['Your phone is not in reach.', 'Keep your Shlok Key nearby and Bluetooth on — it reconnects on its own.'],
-    'not-paired': ['Not paired yet.', 'Click the Shlok icon in the toolbar and pair this browser with your phone.'],
+    none: ['No saved login for this site.', 'Sign in once and Shhlock will offer to keep it on your phone.'],
+    offline: ['Your phone is not in reach.', 'Keep your Shhlock Key nearby and Bluetooth on — it reconnects on its own.'],
+    'not-paired': ['Not paired yet.', 'Click the Shhlock icon in the toolbar and pair this browser with your phone.'],
     denied: ['Declined on your phone.', ''],
-    locked: ['Shlok is locked.', 'Unlock the app on your phone, then try again.'],
-    timeout: ['No answer from your phone.', 'Open Shlok on your phone and try again.'],
+    locked: ['Shhlock is locked.', 'Unlock the app on your phone, then try again.'],
+    timeout: ['No answer from your phone.', 'Open Shhlock on your phone and try again.'],
     busy: ['Too many requests.', 'Try again in a minute.'],
-    unsupported: ['Shlok only fills on web pages.', ''],
+    unsupported: ['Shhlock only fills on web pages.', ''],
     asking: ['Asking your phone…', ''],
   };
 
@@ -311,7 +311,7 @@
     const avatar = text('div', '✦');
     avatar.className = 'avatar spark';
     const who = el('div', 'who');
-    who.append(text('b', 'Use a strong password'), text('span', 'Shlok offers to save it when you sign up'));
+    who.append(text('b', 'Use a strong password'), text('span', 'Shhlock offers to save it when you sign up'));
     row.append(avatar, who);
     row.addEventListener('mousedown', (event) => event.preventDefault());
     row.addEventListener('click', () => {
@@ -329,7 +329,7 @@
     const anchor = activeField?.isConnected ? activeField : target?.password || target?.username;
     if (!anchor) return;
     chooser = el('div', 'card');
-    chooser.append(el('div', 'head', shield(), text('span', `SHLOK · ${location.hostname}`)));
+    chooser.append(el('div', 'head', shield(), text('span', `SHHLOCK · ${location.hostname}`)));
     if (target?.signup) chooser.append(suggestRow());
     if (target?.signup && !(phase === 'ok' && items?.length)) {
       // a sign-up form needs no answer from the phone
@@ -381,7 +381,7 @@
   function showSavePrompt(offer) {
     if (saveCard || (!isTop && (innerWidth < 340 || innerHeight < 160))) return;
     saveCard = el('div', 'card save');
-    const title = el('h4', '', shield(), text('span', offer.update ? 'Update this password in Shlok?' : 'Save this login to Shlok?'));
+    const title = el('h4', '', shield(), text('span', offer.update ? 'Update this password in Shhlock?' : 'Save this login to Shhlock?'));
     const who = text('p', `${offer.username || '(no username)'} · ${offer.host}`);
     const actions = el('div', 'actions');
     const later = text('button', 'Not now');
@@ -403,7 +403,7 @@
       close();
       if (reply?.status === 'ok') toast(offer.update ? 'Password updated on your phone' : 'Saved to your phone', offer.username);
       else if (reply?.status === 'denied') toast('Could not save', 'Declined on the phone');
-      else toast('Phone not reachable', 'Shlok will ask again on the next page');
+      else toast('Phone not reachable', 'Shhlock will ask again on the next page');
     });
     actions.append(later, save);
     saveCard.append(title, who, actions);

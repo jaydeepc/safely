@@ -3,8 +3,8 @@ import LocalAuthentication
 import SafelyCore
 import SwiftUI
 
-/// iOS Password AutoFill: fills Shlok logins into apps and Safari on the phone itself.
-/// Enable under Settings → General → AutoFill & Passwords → Shlok.
+/// iOS Password AutoFill: fills Shhlock logins into apps and Safari on the phone itself.
+/// Enable under Settings → General → AutoFill & Passwords → Shhlock.
 final class CredentialProviderViewController: ASCredentialProviderViewController {
     private var host: UIHostingController<AutoFillList>?
 
@@ -74,7 +74,7 @@ struct AutoFillList: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
-                            Text("Shlok").font(.rounded(28, .bold)).foregroundStyle(Theme.ink)
+                            Text("Shhlock").font(.rounded(28, .bold)).foregroundStyle(Theme.ink)
                             Spacer()
                             Button("Cancel", action: cancel).font(.rounded(16)).foregroundStyle(Theme.primary)
                         }
@@ -103,7 +103,7 @@ struct AutoFillList: View {
                 .onAppear { shown = true }
             } else {
                 VStack(spacing: 18) {
-                    BouncyMascot(size: 150)
+                    LockTile(size: 96)
                     Text("Unlock to fill").font(.rounded(20, .bold)).foregroundStyle(Theme.ink)
                     Button("Use Face ID") { authenticate() }.buttonStyle(PrimaryButtonStyle()).frame(width: 220)
                     Button("Cancel", action: cancel).font(.rounded(15)).foregroundStyle(Theme.muted)
@@ -135,7 +135,7 @@ struct AutoFillList: View {
             unlocked = true
             return
         }
-        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Fill a login from Shlok") { ok, _ in
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Fill a login from Shhlock") { ok, _ in
             DispatchQueue.main.async {
                 if ok { withAnimation(Theme.spring) { unlocked = true } }
             }

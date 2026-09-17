@@ -1,4 +1,4 @@
-// Shlok wire protocol — browser side. Mirrors core/Sources/SafelyCore/{Crypto,Messages}.swift.
+// Shhlock wire protocol — browser side. Mirrors core/Sources/SafelyCore/{Crypto,Messages}.swift.
 // Uses only WebCrypto, so it runs unchanged in the service worker and in Node (scripts/e2e-test.mjs).
 
 const subtle = globalThis.crypto.subtle;
@@ -8,9 +8,9 @@ const dec = new TextDecoder();
 export const ENVELOPE_PLAIN = 0x01;
 export const ENVELOPE_SEALED = 0x02;
 
-const SESSION_SALT = enc.encode('safely/v1/session');
-const COMMIT_LABEL = enc.encode('safely/v1/commit');
-const SAS_LABEL = enc.encode('safely/v1/sas');
+const SESSION_SALT = enc.encode('shhlock/v2/session');
+const COMMIT_LABEL = enc.encode('shhlock/v2/commit');
+const SAS_LABEL = enc.encode('shhlock/v2/sas');
 
 export function concat(...parts) {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
@@ -49,7 +49,9 @@ export async function createPairingKeys() {
   const publicKey = new Uint8Array(await subtle.exportKey('raw', keyPair.publicKey));
   const nonce = globalThis.crypto.getRandomValues(new Uint8Array(16));
   const commit = await sha256(COMMIT_LABEL, publicKey, nonce);
-  return { privateKey: keyPair.privateKey, publicKey, nonce, commit };
+  // the secret that wraps the vault key on the Shhlock Key; only this browser ever holds it
+  const secret = globalThis.crypto.getRandomValues(new Uint8Array(32));
+  return { privateKey: keyPair.privateKey, publicKey, nonce, commit, secret };
 }
 
 export async function keyIdOf(browserPublicKey) {

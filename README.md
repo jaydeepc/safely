@@ -1,102 +1,93 @@
-# Shlok
+# Shhlock
 
-<img src="design/mascot.png" width="120" align="right" alt="Shlok mascot">
+<img src="design/app-icon.png" width="96" align="right" alt="Shhlock">
 
-Your passwords live on your phone. A small Bluetooth key in your pocket lets your browser borrow one
-for a moment — and only while you are there.
+Your passwords live on a small Bluetooth key you carry. Your Mac fills them into any browser or app
+while the key is near — no browser extension, no phone in hand, no cloud.
 
 ```
- Chrome extension ⇄ Bluetooth helper ⇄  Shlok Key  ⇄  Shlok iOS app
-  (fills the form)   (native host)     (XIAO ESP32C3)   (encrypted vault)
-        └──────────── end-to-end encrypted: ECDH P-256 + AES-256-GCM ───────────┘
+  Shhlock app (iPhone)  ──►  Shhlock Key (XIAO ESP32C3)  ◄──  Shhlock for Mac (menu bar)
+  manages the vault,           holds the encrypted vault,        fills logins in Safari, Chrome,
+  approves computers           answers paired devices             Firefox, Arc, native apps …
+            └────────── every message sealed end-to-end: P-256 + AES-256-GCM ──────────┘
 ```
-
-Nothing is stored in Chrome, in the helper, or on the key. Walk away with the key or the phone and the
-browser can fill nothing.
 
 | Folder | What it is |
 | --- | --- |
-| `firmware/` | Arduino firmware for the Seeed Studio XIAO ESP32C3 — a BLE relay that forwards sealed frames |
-| `core/` | Swift package: protocol, crypto, BLE link, the phone-side engine, the native helper (`safely-host`) and a phone simulator (`safely-simphone`) |
+| `firmware/` | Arduino firmware for the Seeed Studio XIAO ESP32C3 — the vault, the crypto, the pairing logic |
+| `core/` | Swift package: protocol + crypto (`SafelyCore`), **Shhlock for Mac** (`ShhlockMac`), the USB protocol test (`shhlock-keytest`), the Chrome native host |
 | `ios/` | SwiftUI app + Password AutoFill extension (`Safely.xcodeproj`) |
-| `extension/` | Chrome extension (Manifest V3) |
-| `scripts/` | Installer, tests, TestFlight build |
-| `docs/` | `PROTOCOL.md` and the illustrated guide `Shlok-Guide.pdf` |
-| `design/` | Mascot and illustration source art (generated with GPT Image on Higgsfield) |
+| `extension/` | Chrome extension — optional now; kept as an alternative to the Mac app |
+| `scripts/` | Installers, tests, TestFlight build, PDF guide |
+| `docs/` | `PROTOCOL.md` and the illustrated guide `Shhlock-Guide.pdf` |
+| `design/` | Icon and illustration sources |
+
+> Code identifiers, folder names, the bundle ID `com.codecrackjd.safely` and the native-host ID still say
+> *safely* on purpose (the project's original code name). Only what people see says Shhlock.
+
+## How it works
+
+1. **The key holds the vault.** Logins are stored on the ESP32 as one AES-256-GCM file. The vault key is never in
+   flash in the clear: it is wrapped per paired device with a secret only that device holds. A stolen key alone is unreadable.
+2. **The phone manages it.** Pair once by pressing the key's button, load your logins (CSV import from Chrome/Safari,
+   or add by hand), approve each computer with a 6-digit code. After that the phone can stay in your pocket, or at home.
+3. **The Mac fills.** A menu-bar app watches the focused field through macOS Accessibility, reads the page's address
+   from the browser, asks the key for matching logins and fills them. One match fills at once; several show a small
+   list under the field to click. Works in every browser and in native apps — nothing to install in the browser.
+
+Why a Mac app and not only Bluetooth? A Bluetooth device can only *type* into a computer (as a keyboard); it cannot
+see which site is open or draw a chooser. Something on the computer has to do that. The menu-bar app is that something,
+and it is browser-independent — that is what removed the Chrome extension.
 
 ## Quick start
 
-**1 · Key** — plug in the XIAO ESP32C3 and flash it (already done once for the board on this Mac):
+**1 · Key** — plug in the XIAO ESP32C3 and flash it (needs `arduino-cli` with the esp32 core, NimBLE-Arduino and ArduinoJson):
 
 ```bash
 firmware/flash.sh
 ```
 
-Afterwards it only needs power — a USB battery or any USB port.
+**2 · Phone** — install from TestFlight (or open `ios/Safely.xcodeproj` and Run). In the app: **Key → Pair this phone
+with the key → press the button on the key.** Then **Settings → Import from Chrome or Safari** with the CSV that
+`chrome://password-manager/settings → Export passwords` gives you (AirDrop it to the phone). The vault syncs to the key.
 
-**2 · Browser helper + extension**
-
-```bash
-scripts/install-host.sh
-```
-
-Then Chrome → `chrome://extensions` → Developer mode → **Load unpacked** → pick `extension/`.
-The setup page opens by itself. If macOS asks whether Chrome may use Bluetooth, allow it.
-
-**3 · Phone** — open `ios/Safely.xcodeproj`, select your iPhone, Run. For TestFlight see below.
-In the app: **Devices → Pair a browser**, then **Start pairing** on the Chrome setup page and compare the six digits.
-
-**4 · Passwords** — Chrome → `chrome://password-manager/settings` → **Export passwords**, then Shlok toolbar
-icon → **Import passwords** and drop the CSV. It is encrypted in the browser and sent through the key to the phone.
-Nothing is removed from Chrome; delete the CSV afterwards. (The app can also import the CSV directly: Settings → Import.)
-
-**5 · Try it** — `scripts/serve-test-page.sh` serves a harmless login form at <http://localhost:8765>, or just open a site you imported.
-
-### No iPhone at hand?
-
-`safely-simphone` runs the exact same phone-side code on your Mac with four demo logins
-(`github.com`, `example.com`, `localhost:8765`):
+**3 · Mac**
 
 ```bash
-cd core && swift build && .build/debug/safely-simphone
+scripts/install-mac-app.sh
 ```
+
+Allow Bluetooth, then from the padlock menu choose **Set up Shhlock…** → allow Accessibility → **Pair with my key**.
+Your phone shows the same 6-digit code; approve it there and click **Same code** on the Mac.
+
+**4 · Try it** — open any login page. The fields fill; with several logins, pick one from the list. `⌘⇧F` fills the focused field on demand.
+
+### Chrome extension (optional)
+
+`extension/` still works, now talking to the key directly like the Mac app does. `scripts/install-host.sh`, then Load unpacked. Not needed when the Mac app runs.
 
 ## Tests
 
 ```bash
-cd core && swift test              # framing, crypto, domain matching, CSV, pairing + replay
-node scripts/protocol-test.mjs     # extension JavaScript ⇄ phone Swift, no Bluetooth needed
-node scripts/ble-e2e-test.mjs      # the whole chain over real Bluetooth (needs the key + safely-simphone running)
+cd core && swift test                       # framing, crypto, domain matching, CSV, merge
+firmware/flash.sh --test && cd core && swift run shhlock-keytest
+                                            # the real key over USB: pairing, approval, sync, save, replay, reboot — 21 checks
 ```
 
 ## TestFlight
 
 ```bash
-scripts/testflight.sh            # → build/export/Safely.ipa, upload it with the Transporter app
+scripts/testflight.sh --upload   # archive + upload with the Apple ID signed in to Xcode
 ```
-
-```bash
-scripts/testflight.sh --upload   # → straight to App Store Connect
-```
-
-One-time: sign in to Xcode (Settings → Accounts) and create the app record in App Store Connect with bundle ID
-`com.codecrackjd.safely`. The script header explains how to change the bundle ID.
-
-> **Naming:** the product is called **Shlok**. Code identifiers, the bundle ID (`com.codecrackjd.safely`), the native-host ID and folder
-> names still say *safely* on purpose — only what people see was renamed.
 
 ## Security model
 
-- **The key is untrusted.** It relays opaque frames and keeps no state. Stealing or cloning it yields nothing.
-- **Pairing** uses a commitment + six digit comparison, so a nearby attacker cannot slip in between browser and phone.
-- **Every message** is sealed with AES-256-GCM under a key derived from both sides' P-256 keys; a strictly
-  increasing counter rejects replays. The browser's key is a non-extractable WebCrypto key.
-- **The vault** is one AES-256-GCM file; its key sits in the iOS Keychain (this device only, never iCloud, never backups).
-- **The phone decides.** "Fill automatically" treats proximity as consent; "Ask me every time" requires Face ID per request.
-  Requests are limited to 40 per minute per browser and every fill is written to the Activity log.
-- **The page never picks the site.** The extension takes the origin from Chrome, and the phone only returns logins
-  whose registrable domain matches (with shared-hosting suffixes such as `github.io` treated as separate owners).
-
-Known limits of this first version: no forward secrecy (a stolen browser profile *plus* recorded radio traffic could be
-decrypted), no BLE-level bonding (anyone in range can connect to the key and be ignored), and the vault has no cloud
-backup by design — use **Settings → Export a backup** now and then.
+- **Key:** vault sealed with AES-256-GCM; vault key wrapped per device (HKDF of a 32-byte device secret); P-256 identity in NVS.
+  Pairing a phone needs the physical button. Pairing a computer needs the phone's approval of a commitment-bound 6-digit code.
+- **Transport:** every message sealed under a static-static ECDH session key, replay-protected by a strictly increasing counter,
+  40 requests/min per device. The key answers only devices it knows.
+- **Phone:** vault also kept locally (AES-256, Keychain-held key, this device only), Face ID lock, so you can reload a lost or reset key.
+- **Mac:** pairing (session key + wrapping secret) in the login keychain. Passwords exist in the Mac's memory only while filling.
+- Known limits: no forward secrecy; no BLE bonding (radio-level eavesdroppers see only ciphertext); ESP32 flash encryption not enabled
+  (a determined attacker with the key **and** a paired computer's keychain could read the vault); no cloud backup by design — use
+  **Settings → Export a backup**.

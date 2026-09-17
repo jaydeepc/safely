@@ -1,56 +1,72 @@
+import Combine
 import Foundation
 import LocalAuthentication
 import SafelyCore
 import SwiftUI
 import UserNotifications
 
-/// A credential request waiting for the person's decision ("Ask me every time").
-struct PendingApproval: Identifiable {
-    let id: String
-    let request: CredentialRequest
-    let matches: [VaultItem]
-    let reply: (CredentialReply) -> Void
-    let receivedAt = Date()
-}
-
 enum PairingPhase: Equatable {
     case idle
-    case waiting
-    case compare(code: String, browser: String)
+    case connecting          // waiting for the key to answer
+    case pressButton         // the key wants its button pressed
     case paired(String)
     case failed(String)
 }
 
-/// Owns the vault, the Bluetooth link and the protocol engine, and turns protocol events into UI state.
+struct KeyStatus: Equatable {
+    var connected = false
+    var unlocked = false
+    var vaultCount: Int?
+    var lastSync: Date?
+    var syncing = false
+}
+
+/// Owns the vault, the Bluetooth link to the key, and everything the phone does for it:
+/// loading the vault onto the key, approving computers, keeping both sides in step.
 @MainActor
 final class AppModel: NSObject, ObservableObject {
     let vault = VaultStore()
-    let browsers = BrowserStore()
     let activity = ActivityLog()
     let settings = AppSettings()
 
     @Published var linkState = RelayLink.State()
+    @Published var key = KeyStatus()
+    @Published var paired = false
     @Published var pairing: PairingPhase = .idle
-    @Published var approval: PendingApproval?
+    @Published var approval: ApprovalRequest?
+    @Published var peers: [PeerInfo] = []
     @Published var isLocked = true
-    @Published var lastFill: ActivityEvent?
 
     static let isDemo = ProcessInfo.processInfo.arguments.contains("-SafelyDemo")
 
     private let link = RelayLink(role: .phone, restoreIdentifier: "com.codecrackjd.safely.central")
-    private var engine: PhoneEngine!
+    private var client: KeyClient!
     private var backgroundedAt: Date?
     private var isForeground = true
-    private static let approveCategory = "SAFELY_APPROVE"
+    private var pushTask: Task<Void, Never>?
+    private var vaultWatcher: AnyCancellable?
 
     override init() {
         super.init()
-        engine = PhoneEngine(identity: Self.loadIdentity(), store: browsers, deviceName: UIDevice.current.name)
-        engine.delegate = self
-        engine.send = { [link] envelope in _ = link.send(envelope) }
-        link.onMessage = { [weak self] envelope in self?.engine.receive(envelope) }
-        link.onState = { [weak self] state in
-            withAnimation(.spring(duration: 0.5)) { self?.linkState = state }
+        client = KeyClient(role: .phone, name: UIDevice.current.name,
+                           stored: Keychain.data(for: "key-pairing").flatMap { try? JSONDecoder().decode(KeyPairing.self, from: $0) },
+                           persist: { pairing in
+                               if let pairing, let data = try? JSONEncoder().encode(pairing) { Keychain.set(data, for: "key-pairing") }
+                               else { Keychain.delete("key-pairing") }
+                           })
+        paired = client.isPaired
+        client.send = { [link] in link.send($0) }
+        client.onPairingEvent = { [weak self] event in self?.pairingEvent(event) }
+        client.onApprovalRequest = { [weak self] request in self?.approvalArrived(request) }
+        client.onUnpaired = { [weak self] in
+            self?.paired = false
+            self?.key = KeyStatus()
+        }
+        link.onMessage = { [weak self] envelope in self?.client.receive(envelope) }
+        link.onState = { [weak self] state in self?.linkChanged(state) }
+
+        vaultWatcher = vault.objectWillChange.sink { [weak self] _ in
+            Task { @MainActor [weak self] in self?.schedulePush() }
         }
 
         if Self.isDemo {
@@ -60,14 +76,170 @@ final class AppModel: NSObject, ObservableObject {
             isLocked = settings.appLock
             link.start()
         }
-        configureNotifications()
+        UNUserNotificationCenter.current().delegate = self
     }
 
-    private static func loadIdentity() -> Identity {
-        if let raw = Keychain.data(for: "identity"), let identity = try? Identity(rawRepresentation: raw) { return identity }
-        let identity = Identity()
-        Keychain.set(identity.rawRepresentation, for: "identity")
-        return identity
+    // MARK: - Link
+
+    private func linkChanged(_ state: RelayLink.State) {
+        let cameUp = state.keyConnected && !linkState.keyConnected
+        withAnimation(.easeInOut(duration: 0.3)) { linkState = state }
+        if !state.keyConnected {
+            key.connected = false
+            key.unlocked = false
+            return
+        }
+        key.connected = true
+        if cameUp, paired { Task { await connectToKey() } }
+    }
+
+    /// Unlock the key, pull what computers saved, push our vault.
+    private func connectToKey() async {
+        guard let reply = await client.unlock() else { return }
+        key.unlocked = reply.status == "ok"
+        key.vaultCount = reply.vaultCount
+        if key.unlocked {
+            await sync()
+        } else if reply.status == "denied" {
+            activity.add(.denied, site: "Shhlock Key", detail: "This phone's secret no longer opens the key. Reset the key and pair again.")
+        }
+    }
+
+    // MARK: - Sync
+
+    func sync() async {
+        guard paired, key.connected, key.unlocked, !key.syncing else { return }
+        key.syncing = true
+        defer { key.syncing = false }
+
+        // 1. pull: logins saved from computers since we last looked
+        var pulled: [WireItem] = []
+        var offset = 0
+        while true {
+            var pull = Message(t: Message.Kind.vaultPull)
+            pull.offset = offset
+            pull.limit = 25
+            guard let reply = await client.request(pull, timeout: 20), let items = reply.items else { return }
+            pulled += items
+            offset += items.count
+            if items.isEmpty || offset >= (reply.total ?? 0) { break }
+        }
+        let summary = vault.mergeNewer(pulled)
+        if summary.imported + summary.updated > 0 {
+            activity.add(.imported, site: "Shhlock Key", detail: "\(summary.imported) new · \(summary.updated) updated from your computers")
+        }
+
+        // 2. push: the phone's list is the truth (this is also how deletions reach the key)
+        await pushVault()
+    }
+
+    private func pushVault() async {
+        let items = vault.items.map(\.wire)
+        let batches = items.isEmpty ? [[]] : stride(from: 0, to: items.count, by: 25).map { Array(items[$0..<min($0 + 25, items.count)]) }
+        for (i, batch) in batches.enumerated() {
+            var put = Message(t: Message.Kind.vaultPut)
+            put.batch = i + 1
+            put.totalBatches = batches.count
+            put.items = batch
+            guard let reply = await client.request(put, timeout: 30), reply.status == "ok" else {
+                activity.add(.denied, site: "Shhlock Key", detail: "Sync stopped — the key did not answer")
+                return
+            }
+            if i == batches.count - 1 { key.vaultCount = reply.vaultCount }
+        }
+        key.lastSync = Date()
+    }
+
+    private func schedulePush() {
+        guard paired, key.unlocked, !key.syncing else { return }
+        pushTask?.cancel()
+        pushTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            await self?.pushVault()
+        }
+    }
+
+    // MARK: - Pairing with the key
+
+    func beginPairing() {
+        pairing = .connecting
+        client.startPairing()
+    }
+
+    func endPairing() {
+        if case .paired = pairing {} else { client.cancelPairing() }
+        pairing = .idle
+    }
+
+    private func pairingEvent(_ event: KeyPairingEvent) {
+        switch event {
+        case .waitingForButton:
+            withAnimation(Theme.spring) { pairing = .pressButton }
+        case .paired(let name, _):
+            paired = true
+            activity.add(.paired, site: name, detail: "This phone now manages the key")
+            withAnimation(Theme.spring) { pairing = .paired(name) }
+            Task {
+                try? await Task.sleep(for: .seconds(1.2))  // let the enrol round trip finish
+                await connectToKey()
+            }
+        case .failed(let reason):
+            withAnimation(Theme.spring) { pairing = .failed(reason) }
+        case .compare:
+            break
+        }
+    }
+
+    func forgetKey() {
+        client.forgetPairing(tellKey: true)
+        paired = false
+        key = KeyStatus()
+        activity.add(.unpaired, site: "Shhlock Key", detail: "Removed from this phone")
+    }
+
+    /// Wipes the key completely: vault, pairings, identity. The phone keeps its own copy of the vault.
+    func resetKey() async {
+        _ = await client.request(Message(t: Message.Kind.wipe), timeout: 10)
+        client.forgetPairing(tellKey: false)
+        paired = false
+        key = KeyStatus()
+        activity.add(.unpaired, site: "Shhlock Key", detail: "Key reset to factory state")
+    }
+
+    // MARK: - Computers
+
+    func refreshPeers() async {
+        guard let reply = await client.request(Message(t: Message.Kind.clientsList), timeout: 10) else { return }
+        withAnimation(Theme.spring) { peers = (reply.clients ?? []).filter { $0.role != "phone" } }
+    }
+
+    func remove(_ peer: PeerInfo) async {
+        var m = Message(t: Message.Kind.clientsRemove)
+        m.target = peer.id
+        _ = await client.request(m, timeout: 10)
+        activity.add(.unpaired, site: peer.name, detail: "Removed from the key")
+        await refreshPeers()
+    }
+
+    private func approvalArrived(_ request: ApprovalRequest) {
+        withAnimation(Theme.spring) { approval = request }
+        activity.add(.offered, site: request.name, detail: "Wants to pair — code \(request.code)")
+        if !isForeground {
+            notify(title: "\(request.name) wants to pair", body: "Open Shhlock and compare the code \(request.code).")
+        }
+    }
+
+    func resolveApproval(_ ok: Bool) async {
+        guard let request = approval else { return }
+        if ok, !(await authenticate("Let \(request.name) use your logins")) { return }
+        client.answerApproval(request, ok: ok)
+        activity.add(ok ? .paired : .denied, site: request.name, detail: ok ? "Approved · code \(request.code)" : "Rejected")
+        withAnimation(Theme.spring) { approval = nil }
+        if ok {
+            try? await Task.sleep(for: .seconds(2))
+            await refreshPeers()
+        }
     }
 
     // MARK: - Lock
@@ -75,13 +247,12 @@ final class AppModel: NSObject, ObservableObject {
     func unlock() async {
         guard isLocked else { return }
         let context = LAContext()
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            isLocked = false  // no passcode on this device: nothing to check against
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) else {
+            isLocked = false
             return
         }
         let ok = (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Unlock your vault")) ?? false
-        if ok { withAnimation(.spring(duration: 0.6)) { isLocked = false } }
+        if ok { withAnimation(.easeInOut(duration: 0.35)) { isLocked = false } }
     }
 
     func scenePhaseChanged(_ phase: ScenePhase) {
@@ -90,6 +261,7 @@ final class AppModel: NSObject, ObservableObject {
             isForeground = true
             if let since = backgroundedAt, settings.appLock, Date().timeIntervalSince(since) > 45 { isLocked = true }
             backgroundedAt = nil
+            if paired, key.connected { Task { await sync() } }
         case .background:
             isForeground = false
             backgroundedAt = backgroundedAt ?? Date()
@@ -98,7 +270,6 @@ final class AppModel: NSObject, ObservableObject {
         }
     }
 
-    /// Confirms the person's identity before something sensitive (approve, reveal, export).
     func authenticate(_ reason: String) async -> Bool {
         if Self.isDemo { return true }
         let context = LAContext()
@@ -106,92 +277,24 @@ final class AppModel: NSObject, ObservableObject {
         return (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
     }
 
-    // MARK: - Pairing
-
-    func beginPairing() {
-        pairing = .waiting
-        engine.pairingWindowOpen = true
-    }
-
-    func answerPairing(matches: Bool) {
-        engine.confirmPairing(matches)
-    }
-
-    func endPairing() {
-        engine.pairingWindowOpen = false
-        pairing = .idle
-    }
-
-    func forget(_ browser: PairedBrowser) {
-        engine.forget(browser)
-        activity.add(.unpaired, site: browser.name, detail: "Removed from this phone")
-    }
-
-    // MARK: - Approvals
-
-    func resolveApproval(_ allow: Bool) async {
-        guard let pending = approval else { return }
-        if allow, !(await authenticate("Send your login for \(DomainMatcher.host(of: pending.request.origin))")) { return }
-        finish(pending, allow: allow)
-    }
-
-    private func finish(_ pending: PendingApproval, allow: Bool) {
-        if approval?.id == pending.id { withAnimation(.spring(duration: 0.45)) { approval = nil } }
-        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [pending.id])
-        let site = DomainMatcher.host(of: pending.request.origin)
-        if allow {
-            deliver(pending.matches, for: pending.request, reply: pending.reply)
-        } else {
-            pending.reply(.denied)
-            activity.add(.denied, site: site, detail: pending.request.browser.name)
-        }
-    }
-
-    private func deliver(_ matches: [VaultItem], for request: CredentialRequest, reply: (CredentialReply) -> Void) {
-        reply(.items(matches))
-        vault.markUsed(matches.map(\.id))
-        let site = DomainMatcher.host(of: request.origin)
-        let who = matches.count == 1 ? matches[0].username : "\(matches.count) logins"
-        activity.add(.filled, site: site, detail: "\(who) → \(request.browser.name)")
-        withAnimation(.spring(duration: 0.5)) { lastFill = activity.events.first }
-        if settings.notifyOnFill, !isForeground {
-            notify(id: UUID().uuidString, title: "Filled \(site)", body: "\(who) was sent to \(request.browser.name).", category: nil)
-        }
-    }
-
     // MARK: - Notifications
-
-    private func configureNotifications() {
-        let center = UNUserNotificationCenter.current()
-        center.delegate = self
-        let approve = UNNotificationAction(identifier: "APPROVE", title: "Approve", options: [.authenticationRequired])
-        let deny = UNNotificationAction(identifier: "DENY", title: "Deny", options: [.destructive])
-        center.setNotificationCategories([
-            UNNotificationCategory(identifier: Self.approveCategory, actions: [approve, deny], intentIdentifiers: []),
-        ])
-    }
 
     func requestNotificationPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
-    private func notify(id: String, title: String, body: String, category: String?) {
+    private func notify(title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        content.sound = category == nil ? nil : .default
-        if let category {
-            content.categoryIdentifier = category
-            content.interruptionLevel = .active
-        }
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
+        content.sound = .default
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 
     // MARK: - Import / export
 
     func importCSV(_ text: String) -> ImportSummary {
-        let parsed = PasswordCSV.parse(text)
-        let summary = vault.merge(parsed)
+        let summary = vault.merge(PasswordCSV.parse(text))
         activity.add(.imported, site: "CSV file", detail: "\(summary.imported) new · \(summary.updated) updated · \(summary.skipped) skipped")
         return summary
     }
@@ -207,8 +310,10 @@ final class AppModel: NSObject, ObservableObject {
     private func seedDemo() {
         linkState.bluetooth = .on
         linkState.keyConnected = true
-        linkState.peerPresent = true
         linkState.rssi = -48
+        paired = true
+        key = KeyStatus(connected: true, unlocked: true, vaultCount: 7, lastSync: Date().addingTimeInterval(-120))
+        peers = [PeerInfo(id: "a", name: "Jaydeep's MacBook Pro", role: "computer", lastCtr: nil)]
         guard vault.items.isEmpty else { return }
         vault.merge([
             WireItem(title: "GitHub", url: "https://github.com/login", username: "jaydeep@example.com", password: "vK9#mPq2-xLw7!Rt"),
@@ -219,102 +324,15 @@ final class AppModel: NSObject, ObservableObject {
             WireItem(title: "Spotify", url: "https://accounts.spotify.com", username: "jd.music", password: "Rf3$ggU7-mNb4@Kj"),
             WireItem(title: "Linear", url: "https://linear.app/login", username: "jaydeep@example.com", password: "Xc8!vvB5-lKj2#Hg"),
         ])
-        activity.add(.paired, site: "Chrome on macOS", detail: "Pairing code confirmed")
+        activity.add(.paired, site: "Shhlock Key", detail: "This phone now manages the key")
         activity.add(.imported, site: "Chrome", detail: "7 new · 0 updated · 0 skipped")
-        activity.add(.filled, site: "figma.com", detail: "jaydeep@example.com → Chrome on macOS")
-        activity.add(.filled, site: "github.com", detail: "jaydeep@example.com → Chrome on macOS")
-    }
-}
-
-// MARK: - Protocol events
-
-extension AppModel: PhoneEngineDelegate {
-    nonisolated func phoneEngine(_ engine: PhoneEngine, showPairingCode code: String, browserName: String) {
-        MainActor.assumeIsolated {
-            withAnimation(.spring(duration: 0.5)) { pairing = .compare(code: code, browser: browserName) }
-        }
-    }
-
-    nonisolated func phoneEngine(_ engine: PhoneEngine, pairingEnded result: PairingResult) {
-        MainActor.assumeIsolated {
-            switch result {
-            case .paired(let browser):
-                activity.add(.paired, site: browser.name, detail: "Pairing code confirmed")
-                browsers.objectWillChange.send()
-                withAnimation(.spring(duration: 0.5)) { pairing = .paired(browser.name) }
-            case .failed(let reason):
-                withAnimation(.spring(duration: 0.5)) { pairing = .failed(reason) }
-            }
-        }
-    }
-
-    nonisolated func phoneEngine(_ engine: PhoneEngine, credentialsFor request: CredentialRequest, reply: @escaping (CredentialReply) -> Void) {
-        MainActor.assumeIsolated {
-            let site = DomainMatcher.host(of: request.origin)
-            let matches = vault.matches(for: request.origin)
-            guard !matches.isEmpty else {
-                reply(.items([]))
-                if request.reason == "user" { activity.add(.nothingFound, site: site, detail: request.browser.name) }
-                return
-            }
-            if settings.fillPolicy == .automatic {
-                deliver(matches, for: request, reply: reply)
-                return
-            }
-
-            let pending = PendingApproval(id: request.id, request: request, matches: matches, reply: reply)
-            if let previous = approval { finish(previous, allow: false) }
-            withAnimation(.spring(duration: 0.5)) { approval = pending }
-            activity.add(.offered, site: site, detail: "Waiting for approval · \(request.browser.name)")
-            if !isForeground {
-                notify(id: pending.id, title: "Sign in to \(site)?", body: "\(request.browser.name) is asking for your login.", category: Self.approveCategory)
-            }
-            // The browser stops waiting after a minute; do not leave a stale sheet behind.
-            Task { [weak self] in
-                try? await Task.sleep(for: .seconds(55))
-                guard let self, self.approval?.id == pending.id else { return }
-                self.finish(pending, allow: false)
-            }
-        }
-    }
-
-    nonisolated func phoneEngine(_ engine: PhoneEngine, save item: WireItem, origin: String, from browser: PairedBrowser, reply: @escaping (Bool) -> Void) {
-        MainActor.assumeIsolated {
-            let summary = vault.merge([item])
-            let site = DomainMatcher.host(of: origin)
-            activity.add(.saved, site: site, detail: summary.updated > 0 ? "Password updated · \(item.username)" : "New login · \(item.username)")
-            reply(true)
-        }
-    }
-
-    nonisolated func phoneEngine(_ engine: PhoneEngine, importItems items: [WireItem], from browser: PairedBrowser) -> ImportSummary {
-        MainActor.assumeIsolated {
-            let summary = vault.merge(items)
-            activity.add(.imported, site: browser.name, detail: "\(summary.imported) new · \(summary.updated) updated · \(summary.skipped) skipped")
-            return summary
-        }
-    }
-
-    nonisolated func phoneEngineVaultCount(_ engine: PhoneEngine) -> Int {
-        MainActor.assumeIsolated { vault.items.count }
+        activity.add(.paired, site: "Jaydeep's MacBook Pro", detail: "Approved · code 482913")
+        activity.add(.imported, site: "Shhlock Key", detail: "1 new · 0 updated from your computers")
     }
 }
 
 extension AppModel: UNUserNotificationCenterDelegate {
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        let id = response.notification.request.identifier
-        let action = response.actionIdentifier
-        await MainActor.run {
-            guard let pending = approval, pending.id == id else { return }
-            switch action {
-            case "APPROVE": finish(pending, allow: true)  // iOS already authenticated: the action requires it
-            case "DENY": finish(pending, allow: false)
-            default: break  // tapped the banner: the app opens and shows the approval sheet
-            }
-        }
-    }
-
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        []
+        [.banner, .sound]
     }
 }

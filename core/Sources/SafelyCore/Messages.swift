@@ -8,14 +8,32 @@ public struct WireItem: Codable, Equatable {
     public var username: String
     public var password: String
     public var notes: String?
+    /// Seconds since 1970, as kept on the key.
+    public var updatedAt: Int?
 
-    public init(id: String? = nil, title: String, url: String, username: String, password: String, notes: String? = nil) {
+    public init(id: String? = nil, title: String, url: String, username: String, password: String, notes: String? = nil, updatedAt: Int? = nil) {
         self.id = id
         self.title = title
         self.url = url
         self.username = username
         self.password = password
         self.notes = notes
+        self.updatedAt = updatedAt
+    }
+}
+
+/// A device paired with the key, as the key reports it to the phone.
+public struct PeerInfo: Codable, Equatable, Identifiable {
+    public var id: String
+    public var name: String
+    public var role: String
+    public var lastCtr: Int64?
+
+    public init(id: String, name: String, role: String, lastCtr: Int64? = nil) {
+        self.id = id
+        self.name = name
+        self.role = role
+        self.lastCtr = lastCtr
     }
 }
 
@@ -37,6 +55,19 @@ public struct Message: Codable {
         public static let ping = "ping"
         public static let pong = "pong"
         public static let unpair = "unpair"
+        // v2: the key holds the vault
+        public static let pairButton = "pair_button"
+        public static let enroll = "enroll"
+        public static let unlock = "unlock"
+        public static let approve = "approve"
+        public static let approveReply = "approve_reply"
+        public static let vaultPull = "vault_pull"
+        public static let vaultItems = "vault_items"
+        public static let vaultPut = "vault_put"
+        public static let clientsList = "clients_list"
+        public static let clients = "clients"
+        public static let clientsRemove = "clients_remove"
+        public static let wipe = "wipe"
     }
 
     public enum Status {
@@ -68,6 +99,17 @@ public struct Message: Codable {
     public var updated: Int?
     public var skipped: Int?
     public var vaultCount: Int?
+    public var role: String?
+    public var secret: String?
+    public var code: String?
+    public var ok: Bool?
+    public var offset: Int?
+    public var limit: Int?
+    public var total: Int?
+    public var unlocked: Bool?
+    public var clients: [PeerInfo]?
+    /// A paired device this message is about (approve, approve_reply, clients_remove).
+    public var target: String?
 
     public init(t: String, id: String? = nil) {
         self.t = t

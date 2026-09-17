@@ -1,63 +1,42 @@
 import SafelyCore
 import SwiftUI
 
-/// Phone ─ Key ─ Browser, with light running along the wires that are live.
+/// Phone ─ Key ─ Computers. Solid wire when live, dotted while looking.
 struct LinkChain: View {
     let state: RelayLink.State
-    var compact = false
+    let key: KeyStatus
+    let paired: Bool
+    let computers: Int
 
-    private var keyOn: Bool { state.keyConnected }
-    private var browserOn: Bool { state.keyConnected && state.peerPresent }
+    private var keyOn: Bool { state.keyConnected && paired && key.unlocked }
+    private var keyFound: Bool { state.keyConnected }
 
     var body: some View {
         HStack(spacing: 0) {
-            node("iphone", "Phone", on: true, fill: Theme.gradient, glow: Theme.primary)
+            node("iphone", "Phone", on: true)
             Wire(on: keyOn, seeking: state.bluetooth == .on && !keyOn)
-            node("key.horizontal.fill", "Key", on: keyOn, fill: Theme.sunnyGradient, glow: Theme.tangerine)
-            Wire(on: browserOn, seeking: keyOn && !browserOn)
-            node("laptopcomputer", "Browser", on: browserOn, fill: Theme.grapeGradient, glow: Theme.grape)
+            node("key.horizontal", "Key", on: keyFound, highlight: keyOn)
+            Wire(on: keyOn && computers > 0, seeking: keyOn && computers == 0)
+            node("laptopcomputer", computers == 1 ? "1 computer" : "\(computers) computers", on: keyOn && computers > 0)
         }
     }
 
-    private func node(_ symbol: String, _ label: String, on: Bool, fill: LinearGradient, glow: Color) -> some View {
-        let size: CGFloat = compact ? 42 : 54
-        return VStack(spacing: 7) {
+    private func node(_ symbol: String, _ label: String, on: Bool, highlight: Bool? = nil) -> some View {
+        let strong = highlight ?? on
+        return VStack(spacing: 8) {
             ZStack {
-                if on {
-                    PulseRing(size: size, color: glow)
-                }
-                RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
-                    .fill(on ? AnyShapeStyle(fill) : AnyShapeStyle(Theme.field))
-                    .frame(width: size, height: size)
-                    .shadow(color: on ? glow.opacity(0.35) : .clear, radius: 10, y: 5)
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .fill(strong ? AnyShapeStyle(Theme.navyGradient) : on ? AnyShapeStyle(Theme.primary.opacity(0.12)) : AnyShapeStyle(Theme.field))
+                    .frame(width: 52, height: 52)
                 Image(systemName: symbol)
-                    .font(.system(size: size * 0.4, weight: .semibold))
-                    .foregroundStyle(on ? .white : Theme.muted.opacity(0.7))
-                    .symbolEffect(.bounce, value: on)
+                    .font(.system(size: 21, weight: .medium))
+                    .foregroundStyle(strong ? .white : on ? Theme.primary : Theme.faint)
             }
-            .scaleEffect(on ? 1 : 0.92)
-            if !compact {
-                Text(label).font(.rounded(12)).foregroundStyle(on ? Theme.ink : Theme.muted)
-            }
+            Text(label).font(.system(size: 12, weight: .medium)).foregroundStyle(on ? Theme.ink : Theme.muted).lineLimit(1)
         }
+        .frame(width: 84)
         .animation(Theme.spring, value: on)
-    }
-}
-
-private struct PulseRing: View {
-    let size: CGFloat
-    let color: Color
-    @State private var pulse = false
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: size * 0.4, style: .continuous)
-            .stroke(color.opacity(0.4), lineWidth: 2)
-            .frame(width: size, height: size)
-            .scaleEffect(pulse ? 1.45 : 1)
-            .opacity(pulse ? 0 : 0.9)
-            .onAppear {
-                withAnimation(.easeOut(duration: 2.2).repeatForever(autoreverses: false)) { pulse = true }
-            }
+        .animation(Theme.spring, value: strong)
     }
 }
 
@@ -70,58 +49,22 @@ private struct Wire: View {
             Canvas { context, size in
                 let y = size.height / 2
                 var track = Path()
-                track.move(to: CGPoint(x: 4, y: y))
-                track.addLine(to: CGPoint(x: size.width - 4, y: y))
-                context.stroke(track, with: .color(on ? Theme.pink.opacity(0.28) : Theme.muted.opacity(0.18)),
-                               style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: on ? [] : [2, 7]))
-
+                track.move(to: CGPoint(x: 2, y: y))
+                track.addLine(to: CGPoint(x: size.width - 2, y: y))
+                context.stroke(track, with: .color(on ? Theme.primary.opacity(0.5) : Theme.line),
+                               style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: on ? [] : [3, 5]))
                 guard on || seeking else { return }
                 let t = timeline.date.timeIntervalSinceReferenceDate
-                let count = on ? 3 : 1
-                for i in 0..<count {
-                    let speed = on ? 0.9 : 0.5
-                    let phase = (t * speed + Double(i) / Double(count)).truncatingRemainder(dividingBy: 1)
-                    // when only seeking, the dot goes out and comes back
-                    let progress = on ? phase : (phase < 0.5 ? phase * 2 : (1 - phase) * 2)
-                    let x = 4 + (size.width - 8) * progress
-                    let fade = on ? sin(phase * .pi) : 0.7
-                    let dot = Path(ellipseIn: CGRect(x: x - 4, y: y - 4, width: 8, height: 8))
-                    context.fill(dot, with: .color((on ? [Theme.pink, Theme.mint, Theme.sunny][i % 3] : Theme.muted).opacity(fade)))
-                    if on {
-                        context.fill(Path(ellipseIn: CGRect(x: x - 8, y: y - 8, width: 16, height: 16)), with: .color(Theme.pink.opacity(0.16 * fade)))
-                    }
-                }
+                let phase = (t * (on ? 0.6 : 0.4)).truncatingRemainder(dividingBy: 1)
+                let progress = on ? phase : (phase < 0.5 ? phase * 2 : (1 - phase) * 2)
+                let x = 2 + (size.width - 4) * progress
+                let fade = on ? sin(phase * .pi) : 0.6
+                context.fill(Path(ellipseIn: CGRect(x: x - 3, y: y - 3, width: 6, height: 6)),
+                             with: .color((on ? Theme.primary : Theme.muted).opacity(fade)))
             }
         }
         .frame(height: 20)
         .frame(maxWidth: .infinity)
-        .padding(.bottom, 22)
-    }
-}
-
-struct LinkStatusPill: View {
-    let state: RelayLink.State
-
-    private var info: (String, Color) {
-        switch state.bluetooth {
-        case .off: return ("Bluetooth is off", Theme.rose)
-        case .unauthorized: return ("Bluetooth not allowed", Theme.rose)
-        case .unsupported: return ("No Bluetooth here", Theme.muted)
-        default: break
-        }
-        if !state.keyConnected { return ("Looking for your key", Theme.amber) }
-        if !state.peerPresent { return ("Key connected", Theme.grape) }
-        return ("Ready to fill", Theme.green)
-    }
-
-    var body: some View {
-        HStack(spacing: 7) {
-            Circle().fill(info.1).frame(width: 8, height: 8)
-                .phaseAnimator([1.0, 0.35]) { view, phase in view.opacity(phase) } animation: { _ in .easeInOut(duration: 0.9) }
-            Text(info.0).font(.rounded(13)).foregroundStyle(info.1)
-        }
-        .padding(.horizontal, 12).padding(.vertical, 7)
-        .background(info.1.opacity(0.12), in: Capsule())
-        .animation(Theme.spring, value: info.0)
+        .padding(.bottom, 24)
     }
 }

@@ -1,6 +1,6 @@
-// Shlok service worker.
+// Shhlock service worker.
 //
-//   content script / popup  ⇄  this worker  ⇄  native host (BLE pipe)  ⇄  Shlok Key  ⇄  phone
+//   content script / popup  ⇄  this worker  ⇄  native host (BLE pipe)  ⇄  Shhlock Key  ⇄  phone
 //
 // The worker owns the pairing (a non-extractable AES key in IndexedDB) and is the only place
 // where credentials are decrypted. It never writes a password to disk.
@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS = { autofill: true, offerSave: true };
 
 let port = null;
 let reconnectTimer = null;
-const link = { host: 'connecting', bluetooth: 'unknown', key: false, phone: false, rssi: null };
+const link = { host: 'connecting', bluetooth: 'unknown', key: false, phone: false, unlocked: false, vaultCount: null, rssi: null };
 
 const engine = new BrowserEngine({
   send(envelope) {
@@ -45,10 +45,11 @@ function connectHost() {
   port.onMessage.addListener((message) => {
     link.host = 'ok';
     if (message.type === 'status') {
-      const wasReady = link.key && link.phone;
+      const wasConnected = link.key;
       Object.assign(link, { bluetooth: message.bluetooth, key: !!message.key, phone: !!message.phone, rssi: message.rssi ?? null });
+      if (!link.key) link.unlocked = false;
       publishStatus();
-      if (!wasReady && link.key && link.phone) nudgeActiveTabs();
+      if (link.key && !wasConnected) unlockKey();
     } else if (message.type === 'rx') {
       engine.receive(fromBase64(message.data)).catch((e) => console.warn('receive failed', e));
     }
@@ -67,13 +68,29 @@ function connectHost() {
   port.postMessage({ type: 'status?' });
 }
 
+// The vault on the key opens for this browser with its own secret, once per connection.
+let unlocking = false;
+async function unlockKey() {
+  if (unlocking || !link.key || !(await engine.getPairing())) return;
+  unlocking = true;
+  try {
+    const reply = await engine.unlock();
+    link.unlocked = reply?.status === 'ok';
+    link.vaultCount = reply?.vaultCount ?? null;
+  } finally {
+    unlocking = false;
+  }
+  publishStatus();
+  if (link.unlocked) nudgeActiveTabs();
+}
+
 async function snapshot() {
   const pairing = await engine.getPairing();
   return {
     ...link,
     paired: !!pairing,
     phoneName: pairing?.phoneName || null,
-    ready: link.host === 'ok' && link.key && link.phone && !!pairing,
+    ready: link.host === 'ok' && link.key && link.unlocked && !!pairing,
   };
 }
 
@@ -111,7 +128,10 @@ async function fetchCredentials(url, reason) {
   if (!target) return { status: 'unsupported' };
   const status = await snapshot();
   if (!status.paired) return { status: 'not-paired' };
-  if (!status.ready) return { status: 'offline', link: status };
+  if (!status.ready) {
+    if (status.key && !status.unlocked) await unlockKey();
+    if (!link.unlocked) return { status: 'offline', link: status };
+  }
   try {
     // Only origin + path leave the browser; query strings can carry tokens.
     const reply = await engine.request(

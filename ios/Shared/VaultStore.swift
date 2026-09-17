@@ -58,6 +58,13 @@ final class VaultStore: ObservableObject {
         return summary
     }
 
+    @discardableResult
+    func mergeNewer(_ incoming: [WireItem]) -> ImportSummary {
+        let summary = items.mergeNewer(incoming)
+        if summary.imported + summary.updated > 0 { persist() }
+        return summary
+    }
+
     private func persist() {
         items.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
         file.save(items)

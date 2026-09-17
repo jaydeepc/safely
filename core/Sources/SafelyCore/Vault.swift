@@ -29,7 +29,8 @@ public struct VaultItem: Codable, Identifiable, Equatable, Hashable {
     public var host: String { DomainMatcher.host(of: url) }
 
     public var wire: WireItem {
-        WireItem(id: id.uuidString, title: title, url: url, username: username, password: password, notes: nil)
+        WireItem(id: id.uuidString, title: title, url: url, username: username, password: password, notes: notes.isEmpty ? nil : notes,
+                 updatedAt: Int(updatedAt.timeIntervalSince1970))
     }
 }
 
@@ -136,6 +137,35 @@ public extension Array where Element == VaultItem {
                 let host = DomainMatcher.host(of: wire.url)
                 let title = wire.title.isEmpty ? host : wire.title
                 append(VaultItem(title: title, url: wire.url, username: wire.username, password: wire.password, notes: wire.notes ?? ""))
+                index[key] = count - 1
+                summary.imported += 1
+            }
+        }
+        return summary
+    }
+
+    /// Like `merge`, but an existing login only changes when the incoming one is newer (sync from the key).
+    mutating func mergeNewer(_ incoming: [WireItem]) -> ImportSummary {
+        var summary = ImportSummary()
+        var index: [String: Int] = [:]
+        for (i, item) in enumerated() { index[Self.mergeKey(url: item.url, username: item.username)] = i }
+        for wire in incoming {
+            guard !wire.password.isEmpty, !wire.url.isEmpty || !wire.title.isEmpty else { summary.skipped += 1; continue }
+            let key = Self.mergeKey(url: wire.url, username: wire.username)
+            let incomingDate = Date(timeIntervalSince1970: TimeInterval(wire.updatedAt ?? 0))
+            if let i = index[key] {
+                if self[i].password != wire.password, incomingDate > self[i].updatedAt {
+                    self[i].password = wire.password
+                    self[i].updatedAt = incomingDate
+                    summary.updated += 1
+                } else {
+                    summary.skipped += 1
+                }
+            } else {
+                let host = DomainMatcher.host(of: wire.url)
+                var item = VaultItem(title: wire.title.isEmpty ? host : wire.title, url: wire.url, username: wire.username, password: wire.password, notes: wire.notes ?? "")
+                if wire.updatedAt != nil { item.updatedAt = incomingDate; item.createdAt = incomingDate }
+                append(item)
                 index[key] = count - 1
                 summary.imported += 1
             }

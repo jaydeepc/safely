@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds docs/Shlok-Guide.pdf — the illustrated "how it works and how to test it" guide.
+"""Builds docs/Shhlock-Guide.pdf — the illustrated "how it works and how to test it" guide.
 
     python3 scripts/make-guide.py        (needs: pip install reportlab pillow)
 """
@@ -17,7 +17,7 @@ from reportlab.platypus import Paragraph
 
 ROOT = Path(__file__).resolve().parent.parent
 IMG = ROOT / "docs" / "images"
-OUT = ROOT / "docs" / "Shlok-Guide.pdf"
+OUT = ROOT / "docs" / "Shhlock-Guide.pdf"
 FONTS = Path("/System/Library/Fonts/Supplemental")
 
 pdfmetrics.registerFont(TTFont("Body", str(FONTS / "Arial.ttf")))
@@ -26,19 +26,19 @@ pdfmetrics.registerFont(TTFont("Display", str(FONTS / "Arial Rounded Bold.ttf"))
 pdfmetrics.registerFont(TTFont("Mono", str(FONTS / "Courier New Bold.ttf")))
 pdfmetrics.registerFontFamily("Body", normal="Body", bold="Body-Bold", italic="Body", boldItalic="Body-Bold")
 
-INK, MUTED, LINE = HexColor("#2B1A3F"), HexColor("#80708F"), HexColor("#F3E3E1")
-INDIGO, DEEP, MINT = HexColor("#FF4F79"), HexColor("#EE3366"), HexColor("#FF9A3D")  # primary, deep, gradient end
-GRAPE, SKY = HexColor("#7C4DFF"), HexColor("#19B3E6")
-CANVAS, SOFT, GREEN, AMBER, ROSE = HexColor("#FFF7EE"), HexColor("#FFF0E8"), HexColor("#10BA82"), HexColor("#B45309"), HexColor("#EE2E54")
+INK, MUTED, LINE = HexColor("#101828"), HexColor("#667085"), HexColor("#E4E7EC")
+INDIGO, DEEP, MINT = HexColor("#2F6BFF"), HexColor("#1D4ED8"), HexColor("#5B8DFF")  # primary, deep, gradient end
+GRAPE, SKY = HexColor("#0F1B3D"), HexColor("#0EA5A4")
+CANVAS, SOFT, GREEN, AMBER, ROSE = HexColor("#F5F7FB"), HexColor("#EEF3FF"), HexColor("#12B76A"), HexColor("#B45309"), HexColor("#E5484D")
 
 W, H = A4
 M = 44  # page margin
 
-BODY = ParagraphStyle("body", fontName="Body", fontSize=10, leading=14.5, textColor=HexColor("#4A3A5C"))
+BODY = ParagraphStyle("body", fontName="Body", fontSize=10, leading=14.5, textColor=HexColor("#344054"))
 SMALL = ParagraphStyle("small", parent=BODY, fontSize=8.6, leading=12, textColor=MUTED)
 CENTER = ParagraphStyle("center", parent=SMALL, alignment=TA_CENTER)
-LEAD = ParagraphStyle("lead", parent=BODY, fontSize=12, leading=17.5, textColor=HexColor("#6B5A7D"))
-CODE = ParagraphStyle("code", fontName="Mono", fontSize=8.8, leading=12.5, textColor=HexColor("#FFE9D6"))
+LEAD = ParagraphStyle("lead", parent=BODY, fontSize=12, leading=17.5, textColor=HexColor("#475467"))
+CODE = ParagraphStyle("code", fontName="Mono", fontSize=8.8, leading=12.5, textColor=HexColor("#E4E7EC"))
 
 
 class Page:
@@ -46,7 +46,7 @@ class Page:
         self.c = c
         c.setFillColor(CANVAS)
         c.rect(0, 0, W, H, stroke=0, fill=1)
-        for x, y, r, col in ((40, H - 30, 190, "#FFC8A0"), (W - 30, H - 260, 170, "#FFE680"), (W * 0.45, -40, 180, "#FFB8DC")):
+        for x, y, r, col in ((40, H - 30, 190, "#DCE6FF"), (W - 30, H - 260, 170, "#E3F6F5"), (W * 0.45, -40, 180, "#E8EDF7")):
             self.glow(x, y, r, HexColor(col))
         self.y = H - M
         if title:
@@ -59,7 +59,7 @@ class Page:
             self.y -= 58
         c.setFont("Body", 8)
         c.setFillColor(MUTED)
-        c.drawString(M, 24, "Shlok · how it works and how to test it")
+        c.drawString(M, 24, "Shhlock · how it works and how to test it")
         c.drawRightString(W - M, 24, str(number))
 
     def glow(self, x, y, radius, color):
@@ -72,7 +72,7 @@ class Page:
         c = self.c
         if shadow:
             for i in range(6, 0, -1):
-                c.setFillColor(Color(0.93, 0.20, 0.40, alpha=0.012))
+                c.setFillColor(Color(0.06, 0.11, 0.24, alpha=0.012))
                 c.roundRect(x - i, y - i - 3, w + 2 * i, h + 2 * i, radius + i, stroke=0, fill=1)
         c.setFillColor(fill)
         c.roundRect(x, y, w, h, radius, stroke=0, fill=1)
@@ -123,7 +123,7 @@ class Page:
 
     def code(self, lines, x, y, width):
         h = 12.5 * len(lines) + 14
-        self.card(x, y - h, width, h, fill=INK, radius=9, shadow=False)
+        self.card(x, y - h, width, h, fill=HexColor("#0F1B3D"), radius=9, shadow=False)
         self.text("<br/>".join(lines), x + 10, y - 7, width - 20, CODE)
         return y - h
 
@@ -164,144 +164,128 @@ def arrow(c, x1, y1, x2, y2, color=INDIGO, dashed=False, width=1.6):
     c.drawPath(p, stroke=0, fill=1)
 
 
+
 # ───────────────────────────── page 1 · cover ─────────────────────────────
 
 def cover(c):
     p = Page(c, 1)
-    c.drawImage(ImageReader(str(ROOT / "design" / "mascot.png")), M - 4, H - M - 36, 40, 40, mask="auto")
+    c.drawImage(ImageReader(str(ROOT / "design" / "app-icon.png")), M, H - M - 34, 34, 34, mask="auto")
     c.setFillColor(INK)
     c.setFont("Display", 17)
-    c.drawString(M + 40, H - M - 21, "Shlok")
+    c.drawString(M + 44, H - M - 23, "Shhlock")
 
-    c.setFont("Display", 38)
-    c.drawString(M, H - 150, "Your passwords live")
-    c.drawString(M, H - 194, "on your phone.")
+    c.setFont("Display", 36)
+    c.drawString(M, H - 150, "Your passwords,")
+    c.drawString(M, H - 192, "on a key you carry.")
     c.setFillColor(INDIGO)
-    c.drawString(M, H - 238, "A key in your pocket")
-    c.drawString(M, H - 282, "does the rest.")
+    c.drawString(M, H - 234, "Any browser. No phone")
+    c.drawString(M, H - 276, "in hand. No cloud.")
 
-    y = p.text("Shlok is a password vault on your iPhone, a thumbnail-sized Bluetooth key (a Seeed Studio XIAO ESP32C3), "
-               "and a Chrome extension. Open a login page with the key and phone nearby and the form fills itself. "
-               "Walk away, and the browser knows nothing — because it never stored anything.", M, H - 306, W - 2 * M - 60, LEAD)
+    y = p.text("Shhlock is a small Bluetooth key (a Seeed Studio XIAO ESP32C3) that holds your logins, an iPhone app that manages "
+               "them, and a menu-bar app for the Mac that fills them into any browser or app while the key is near. "
+               "Walk away with the key and the computer has nothing.", M, H - 300, W - 2 * M - 40, LEAD)
 
-    y = p.image("hero.jpg", M, y - 18, W - 2 * M, radius=18, height=236)
+    # three-part diagram
+    y -= 22
+    dh = 190
+    p.card(M, y - dh, W - 2 * M, dh)
+    nw, nh = 132, 92
+    gap = (W - 2 * M - 40 - 3 * nw) / 2
+    xs = [M + 20 + i * (nw + gap) for i in range(3)]
+    ny = y - 30 - nh
+    parts = [("iPhone", "Shhlock app", "loads and edits the vault,\napproves computers", False),
+             ("Shhlock Key", "XIAO ESP32C3", "holds the encrypted vault,\nanswers paired devices", True),
+             ("Mac", "Shhlock for Mac", "fills any browser or app\nthrough Accessibility", False)]
+    for i, (a, b, d, strong) in enumerate(parts):
+        if strong:
+            gradient_box(c, xs[i], ny, nw, nh)
+            fg, sub = white, Color(1, 1, 1, alpha=0.8)
+        else:
+            c.setFillColor(SOFT)
+            c.roundRect(xs[i], ny, nw, nh, 12, stroke=0, fill=1)
+            fg, sub = INK, MUTED
+        c.setFillColor(fg)
+        c.setFont("Display", 13)
+        c.drawCentredString(xs[i] + nw / 2, ny + nh - 26, a)
+        c.setFillColor(sub)
+        c.setFont("Mono", 8)
+        c.drawCentredString(xs[i] + nw / 2, ny + nh - 42, b)
+        c.setFillColor(MUTED)
+        c.setFont("Body", 8.2)
+        for k, line in enumerate(d.split("\n")):
+            c.drawCentredString(xs[i] + nw / 2, ny + 24 - k * 11, line)
+    for i, label in enumerate(("manages · syncs", "fills")):
+        x1, x2 = xs[i] + nw + 6, xs[i + 1] - 6
+        arrow(c, x1, ny + nh / 2 + 6, x2, ny + nh / 2 + 6)
+        arrow(c, x2, ny + nh / 2 - 6, x1, ny + nh / 2 - 6, color=SKY)
+        c.setFillColor(MUTED)
+        c.setFont("Body", 7.5)
+        c.drawCentredString((x1 + x2) / 2, ny + nh / 2 + 14, label)
+    c.setFillColor(DEEP)
+    c.setFont("Body-Bold", 8.5)
+    c.drawCentredString(W / 2, y - dh + 12, "every message sealed end-to-end · P-256 + AES-256-GCM · the key opens only for devices you paired")
+    y -= dh + 20
 
     col = (W - 2 * M - 24) / 3
     blocks = [
-        ("The phone", "Holds every login in one AES-256 encrypted file. The key to it never leaves the iPhone. Light, animated SwiftUI app with Face ID, approvals and an activity log."),
-        ("The key", "A BLE relay the size of a stamp. Phone and computer both connect to it. It forwards sealed messages, stores nothing and can read nothing."),
-        ("The browser", "A Chrome extension spots login forms, asks the phone through the key, and fills. A tiny helper keeps the Bluetooth link alive and reconnects when you return."),
+        ("Set up once", "Pair the phone by pressing the key's button. Import your Chrome or Safari passwords. Approve your Mac with a six-digit code."),
+        ("Then just sign in", "Open a login page. One matching login fills itself; several show a short list under the field to click."),
+        ("Walk away", "Bluetooth reaches a few metres. Take the key, and the Mac can fill nothing — it never stored a password."),
     ]
-    top = y - 18
     for i, (title, body) in enumerate(blocks):
         x = M + i * (col + 12)
-        p.card(x, top - 116, col, 116)
-        p.badge(x + 14, top - 14, str(i + 1))
-        p.heading(title, x + 42, top - 13, 12.5)
-        p.text(body, x + 14, top - 44, col - 28, SMALL)
-
+        p.card(x, y - 108, col, 108)
+        p.badge(x + 14, y - 14, str(i + 1))
+        p.heading(title, x + 42, y - 13, 12.5)
+        p.text(body, x + 14, y - 44, col - 28, SMALL)
     p.text("<b>This guide:</b> &nbsp;2 · How it works &nbsp;&nbsp; 3 · Why it is safe &nbsp;&nbsp; 4 · Set it up &nbsp;&nbsp; 5 · Test it, ship it, fix it",
-           M, top - 132, W - 2 * M, SMALL)
+           M, y - 124, W - 2 * M, SMALL)
     c.showPage()
 
 
 # ───────────────────────────── page 2 · how it works ─────────────────────────────
 
 def how_it_works(c):
-    p = Page(c, 2, "How it works", "One round trip, about a quarter of a second")
-    y = p.text("Four pieces pass one sealed message along. Only the two ends — the extension and the phone — hold the key that opens it.",
-               M, p.y, W - 2 * M, LEAD) - 16
+    p = Page(c, 2, "How it works", "The key is the vault; the Mac only borrows")
+    y = p.text("The phone is needed once, to set things up. Afterwards the key and the Mac work on their own.",
+               M, p.y, W - 2 * M, LEAD) - 14
 
-    # architecture diagram
-    dh = 150
-    p.card(M, y - dh, W - 2 * M, dh)
-    nodes = [("Chrome", "extension", "finds the form, fills it"), ("Helper", "safely-host", "keeps Bluetooth open"),
-             ("Shlok Key", "XIAO ESP32C3", "relays, reads nothing"), ("iPhone", "Shlok app", "vault + decisions")]
-    nw, nh = 82, 58
-    gap = (W - 2 * M - 40 - 4 * nw) / 3
-    ny = y - 44 - nh
-    xs = [M + 20 + i * (nw + gap) for i in range(4)]
-    for i, (a, b, d) in enumerate(nodes):
-        if i in (0, 3):
-            gradient_box(c, xs[i], ny, nw, nh)
-            fg, sub = white, Color(1, 1, 1, alpha=0.85)
-        else:
-            c.setFillColor(SOFT)
-            c.roundRect(xs[i], ny, nw, nh, 12, stroke=0, fill=1)
-            fg, sub = INK, MUTED
-        c.setFillColor(fg)
-        c.setFont("Display", 12)
-        c.drawCentredString(xs[i] + nw / 2, ny + nh - 24, a)
-        c.setFillColor(sub)
-        c.setFont("Mono", 8)
-        c.drawCentredString(xs[i] + nw / 2, ny + nh - 40, b)
-        c.setFillColor(MUTED)
-        c.setFont("Body", 8)
-        c.drawCentredString(xs[i] + nw / 2, ny - 13, d)
-    links = [("native", "messaging"), ("Bluetooth", "Low Energy"), ("Bluetooth", "Low Energy")]
-    for i, label in enumerate(links):
-        x1, x2 = xs[i] + nw + 4, xs[i + 1] - 4
-        arrow(c, x1, ny + nh / 2 + 7, x2, ny + nh / 2 + 7)
-        arrow(c, x2, ny + nh / 2 - 7, x1, ny + nh / 2 - 7, color=GRAPE)
-        c.setFillColor(MUTED)
-        c.setFont("Body", 7)
-        c.drawCentredString((x1 + x2) / 2, ny + nh / 2 + 24, label[0])
-        c.drawCentredString((x1 + x2) / 2, ny + nh / 2 + 15, label[1])
-    # the end-to-end bracket
-    by = y - 22
-    c.setStrokeColor(INDIGO)
-    c.setLineWidth(1.2)
-    c.setDash(2, 3)
-    c.line(xs[0] + nw / 2, by, xs[3] + nw / 2, by)
-    c.line(xs[0] + nw / 2, by, xs[0] + nw / 2, ny + nh + 3)
-    c.line(xs[3] + nw / 2, by, xs[3] + nw / 2, ny + nh + 3)
-    c.setDash()
-    label = "end-to-end encrypted · ECDH P-256 + AES-256-GCM"
-    lw = pdfmetrics.stringWidth(label, "Body-Bold", 8.5) + 16
-    c.setFillColor(white)
-    c.rect(W / 2 - lw / 2, by - 6, lw, 12, stroke=0, fill=1)
-    c.setFillColor(DEEP)
-    c.setFont("Body-Bold", 8.5)
-    c.drawCentredString(W / 2, by - 3, label)
-    y -= dh + 22
-
-    # steps + picture
-    left = (W - 2 * M) * 0.56
-    y0 = p.heading("What happens when you open a login page", M, y)
+    left = (W - 2 * M) * 0.58
+    y0 = p.heading("When you open a login page on the Mac", M, y)
     steps = [
-        ("The extension sees a password field.", "It takes the site's address from Chrome itself — a page cannot lie about where it is."),
-        ("It seals a request and hands it to the helper.", "“Logins for https://github.com, please.” Encrypted before it leaves the browser."),
-        ("The key relays it to your phone.", "iOS wakes the app in the background over Bluetooth, even with the screen off."),
-        ("The phone decides.", "It matches the domain against the vault, applies your rule (fill automatically, or ask with Face ID), logs it, and seals the reply."),
-        ("The form fills.", "One match fills on its own; several show a small chooser. The password lives in page memory only."),
+        ("Shhlock for Mac notices the field.", "Through macOS Accessibility it sees that a password or e-mail field has focus, in any app."),
+        ("It reads the page's address.", "From the browser's web area: https://github.com. A page cannot lie about it."),
+        ("It asks the key.", "A sealed request over Bluetooth: “logins for github.com?” The key matches by domain and answers, sealed."),
+        ("It fills — or asks you.", "One match fills at once. Several show a small list under the field; click one. Cmd-Shift-F fills on demand."),
+        ("Nothing stays behind.", "The Mac keeps only its pairing. Passwords exist in its memory for the moment of filling."),
     ]
     yy = y0 - 4
     for i, (title, body) in enumerate(steps):
         p.badge(M, yy, str(i + 1), r=8.5)
-        yy = p.text(f"<b><font color='#2B1A3F'>{title}</font></b> {body}", M + 25, yy + 1, left - 40, BODY) - 8
+        yy = p.text(f"<b><font color='#101828'>{title}</font></b> {body}", M + 25, yy + 1, left - 40, BODY) - 8
 
     rx = M + left + 6
     rw = W - M - rx
-    iy = p.image("walk-away.jpg", rx, y0 + 8, rw, radius=14)
-    p.card(rx, iy - 12 - 96, rw, 96, fill=SOFT, shadow=False)
-    p.heading("Walk away and it stops", rx + 12, iy - 22, 11.5, DEEP)
-    p.text("Bluetooth reaches a few metres. Take the key or the phone with you and the chain breaks; the extension holds "
-           "no passwords to fall back on. Come back and both links reconnect by themselves — no tap needed.",
-           rx + 12, iy - 45, rw - 24, SMALL)
+    iy = p.image("key.jpg", rx, y0 + 8, rw, radius=14)
+    p.card(rx, iy - 12 - 110, rw, 110, fill=SOFT, shadow=False)
+    p.heading("Why not Bluetooth alone?", rx + 12, iy - 22, 11.5, DEEP)
+    p.text("A Bluetooth device can only type into a computer, like a keyboard. It cannot see which site is open or draw a "
+           "list to pick from. Something on the computer must do that — and a menu-bar app that works in every browser is "
+           "lighter than an extension per browser.", rx + 12, iy - 45, rw - 24, SMALL)
 
-    y = min(yy, iy - 108) - 18
-    p.heading("Three things that make it feel seamless", M, y)
+    y = min(yy, iy - 134) - 16
+    p.heading("What the phone does", M, y)
     y -= 28
     col = (W - 2 * M - 24) / 3
     extras = [
-        ("It finds you", "Phone and computer each keep a standing Bluetooth request for the key. The moment it is in range again, both links come back — nothing to tap, no app to open."),
-        ("It works while asleep", "iOS wakes Shlok in the background when the key delivers a message, so the phone can stay locked in your pocket while the form fills."),
-        ("It learns new logins", "Sign in somewhere by hand and the extension offers to save the login — to the phone, through the key. Chrome's own password manager is not involved."),
+        ("Loads the vault", "Import your Chrome or Safari export, add logins by hand, edit and delete. Every change syncs to the key while it is in reach."),
+        ("Approves computers", "A new Mac shows a six-digit code; the phone shows the same one. Tap “Same code” and the Mac may use the key from then on."),
+        ("Keeps a copy", "The phone holds its own encrypted copy. Lose the key: reset a new one, pair, and the vault is back in a minute."),
     ]
     for i, (title, body) in enumerate(extras):
         x = M + i * (col + 12)
         p.card(x, y - 118, col, 118)
-        gradient_box(c, x + 14, y - 20, 26, 6, 3)
+        gradient_box(c, x + 14, y - 20, 26, 5, 2.5)
         p.heading(title, x + 14, y - 30, 11.5)
         p.text(body, x + 14, y - 52, col - 28, SMALL)
     c.showPage()
@@ -310,63 +294,54 @@ def how_it_works(c):
 # ───────────────────────────── page 3 · security ─────────────────────────────
 
 def security(c):
-    p = Page(c, 3, "Why it is safe", "The key is a messenger, not a safe")
-    y = p.text("The design assumes the worst about everything in the middle. The key, the helper and the radio link are all treated as hostile; "
-               "they only ever carry sealed envelopes.", M, p.y, W - 2 * M, LEAD) - 16
+    p = Page(c, 3, "Why it is safe", "Lose the key, and it is a blank")
+    y = p.text("The vault sits on a device you could drop in the street. The design assumes that will happen.",
+               M, p.y, W - 2 * M, LEAD) - 16
 
-    # pairing sequence
-    dh = 250
+    dh = 246
     p.card(M, y - dh, W - 2 * M, dh)
-    p.heading("Pairing: six digits that defeat a man in the middle", M + 16, y - 14, 12.5)
-    bx, px = M + 110, W - M - 110
-    top, bottom = y - 60, y - dh + 18
-    for x, name in ((bx, "Browser"), (px, "Phone")):
-        gradient_box(c, x - 42, top, 84, 22, 8)
+    p.heading("Approving a computer: a code that cannot be faked", M + 16, y - 14, 12.5)
+    bx, kx, px = M + 90, W / 2, W - M - 90
+    top, bottom = y - 60, y - dh + 16
+    for x, name in ((bx, "Mac"), (kx, "Key"), (px, "Phone")):
+        gradient_box(c, x - 34, top, 68, 22, 8)
         c.setFillColor(white)
         c.setFont("Body-Bold", 9.5)
         c.drawCentredString(x, top + 7, name)
         c.setStrokeColor(LINE)
         c.setLineWidth(1.4)
         c.line(x, top, x, bottom)
-    msgs = [
-        (True, "pair_commit", "a fingerprint of the browser's new key — locks its choice in"),
-        (False, "pair_pub", "the phone's public key"),
-        (True, "pair_reveal", "the browser's real key; the phone checks it against the fingerprint"),
-        (None, "Both screens now show the same six digits. You compare them and confirm on both.", ""),
-        (False, "pair_confirm (sealed)", "first encrypted message — proves both derived the same secret"),
+    my = top - 22
+    rows = [
+        (bx, kx, "pair_commit", "a fingerprint of the Mac's new key"),
+        (kx, bx, "pair_pub", "the key's public key"),
+        (bx, kx, "pair_reveal", "the Mac's real key — checked against the fingerprint"),
+        (kx, px, "approve (sealed)", "the six-digit code, to the phone"),
+        (px, kx, "approve_reply (sealed)", "“same code” — tapped by you"),
+        (kx, bx, "pair_confirm (sealed)", "the Mac is in"),
     ]
-    my = top - 24
-    for right, name, note in msgs:
-        if right is None:
-            c.setFillColor(SOFT)
-            c.roundRect(bx - 20, my - 12, px - bx + 40, 22, 11, stroke=0, fill=1)
-            c.setFillColor(DEEP)
-            c.setFont("Body-Bold", 8.8)
-            c.drawCentredString((bx + px) / 2, my - 4.5, name)
-            my -= 36
-            continue
-        arrow(c, bx + 3 if right else px - 3, my, px - 3 if right else bx + 3, my, color=INDIGO if right else GRAPE)
+    for x1, x2, name, note in rows:
+        arrow(c, x1 + 3 if x2 > x1 else x1 - 3, my, x2 - 3 if x2 > x1 else x2 + 3, my, color=INDIGO if x2 > x1 else SKY)
         c.setFillColor(INK)
-        c.setFont("Mono", 8.8)
-        c.drawCentredString((bx + px) / 2, my + 5, name)
+        c.setFont("Mono", 8.4)
+        c.drawCentredString((x1 + x2) / 2, my + 5, name)
         c.setFillColor(MUTED)
-        c.setFont("Body", 8)
-        c.drawCentredString((bx + px) / 2, my - 11, note)
-        my -= 34
+        c.setFont("Body", 7.8)
+        c.drawCentredString((x1 + x2) / 2, my - 10, note)
+        my -= 30
     y -= dh + 8
-    y = p.text("Because the browser commits to its key <i>before</i> it sees the phone's key, an attacker sitting between them cannot shop for a key "
-               "that makes the digits collide. They get one blind guess in a million — and you would see different codes.", M + 4, y - 4, W - 2 * M - 8, SMALL) - 16
+    y = p.text("The Mac commits to its key before it learns the key's, so nobody in between can grind for a matching code. "
+               "The phone pairs differently: it must press the physical button on the key.", M + 4, y - 4, W - 2 * M - 8, SMALL) - 16
 
-    # who knows what
-    p.heading("Who can see what", M, y, 12.5)
+    p.heading("Who holds what", M, y, 12.5)
     y -= 26
     rows = [
-        ("Chrome extension", "A non-extractable session key. Passwords only for the page you are on, only in memory.", "Nothing on disk. No vault.", GREEN),
-        ("Bluetooth helper", "Sealed envelopes passing through.", "No keys. Cannot decrypt.", GREEN),
-        ("Shlok Key", "Sealed frames for a few milliseconds.", "No storage. Lose it: flash a new one for a few dollars.", GREEN),
-        ("iPhone app", "Everything — that is its job.", "AES-256 file; key in the Keychain, this device only, never iCloud.", GRAPE),
+        ("Shhlock Key", "The vault, AES-256-GCM. The vault key exists only in RAM after a paired device unlocks it.", "The vault key in the clear. Stolen alone, it is unreadable.", GREEN),
+        ("Mac", "Its pairing: a session key and a 32-byte unlock secret, in the login keychain.", "No vault. Passwords only in memory while filling.", GREEN),
+        ("iPhone", "Its own encrypted copy, Face ID locked, key in the Keychain (this device only).", "Never in iCloud, never in a backup.", INDIGO),
+        ("Chrome extension", "Optional. Same pairing scheme as the Mac app.", "Nothing on disk beyond its pairing.", GREEN),
     ]
-    cw = [112, 214, W - 2 * M - 112 - 214]
+    cw = [100, 226, W - 2 * M - 100 - 226]
     rh = 36
     p.card(M, y - rh * len(rows) - 22, W - 2 * M, rh * len(rows) + 22)
     c.setFont("Body-Bold", 8)
@@ -389,17 +364,16 @@ def security(c):
     y = ry - 16
 
     col = (W - 2 * M - 12) / 2
-    p.card(M, y - 128, col, 128, fill=SOFT, shadow=False)
+    p.card(M, y - 118, col, 118, fill=SOFT, shadow=False)
     p.heading("Also built in", M + 12, y - 10, 11, DEEP)
-    p.text("• A rising counter in every message — recorded traffic cannot be replayed.<br/>• Logins are matched by registrable domain; "
+    p.text("• A rising counter in every message: recorded traffic cannot be replayed.<br/>• Logins are matched by registrable domain; "
            "<font name='Mono' size='8'>evil.github.io</font> never sees <font name='Mono' size='8'>you.github.io</font>.<br/>"
-           "• 40 requests a minute per browser, every fill in the Activity log.<br/>• Clipboard copies expire after 60 s and stay off Handoff.",
+           "• 40 requests a minute per device.<br/>• Hold the key's button 8 s: factory reset.",
            M + 12, y - 32, col - 24, SMALL)
-    p.card(M + col + 12, y - 128, col, 128, fill=HexColor("#FFFBEB"), shadow=False)
-    p.heading("Honest limits of version 1", M + col + 24, y - 10, 11, AMBER)
-    p.text("• “Fill automatically” treats proximity as consent. Choose “Ask me every time” for Face ID on each request.<br/>"
-           "• No forward secrecy yet: a stolen browser profile plus recorded radio traffic could be decrypted.<br/>"
-           "• No cloud copy by design — use Settings → Export a backup.",
+    p.card(M + col + 12, y - 118, col, 118, fill=HexColor("#FFFBEB"), shadow=False)
+    p.heading("Honest limits of version 2", M + col + 24, y - 10, 11, AMBER)
+    p.text("• No forward secrecy between a device and the key.<br/>• The ESP32's flash is not encrypted: an attacker with the key "
+           "<i>and</i> a paired Mac's keychain could read the vault.<br/>• No cloud copy by design — use Settings → Export a backup.",
            M + col + 24, y - 32, col - 24, SMALL)
     c.showPage()
 
@@ -418,39 +392,33 @@ def setup(c):
         p.heading(title, M + 28, y - 2, 12.5)
         return y - 26
 
-    y = step(1, "Power the key", y)
-    y = p.text("Your XIAO ESP32C3 is already flashed with the Shlok firmware and advertising as <b>Shlok Key</b>. Plug it into any USB "
-               "power — a battery pack in your bag works. To re-flash after a code change:", M + 28, y, left - 28) - 6
-    y = p.code(["firmware/flash.sh"], M + 28, y, left - 28) - 16
+    y = step(1, "Flash and power the key", y)
+    y = p.text("Plug the XIAO ESP32C3 into the Mac once to flash it. Afterwards any USB power will do — a battery in your bag.", M + 28, y, left - 28) - 6
+    y = p.code(["firmware/flash.sh"], M + 28, y, left - 28) - 14
 
-    y = step(2, "Install the helper and the extension", y)
-    y = p.code(["scripts/install-host.sh"], M + 28, y, left - 28) - 7
-    y = p.text("Then in Chrome open <font name='Mono' size='8.6'>chrome://extensions</font>, switch on <b>Developer mode</b>, click <b>Load unpacked</b> and choose the "
-               "<font name='Mono' size='8.6'>extension/</font> folder. The setup page opens by itself. If macOS asks whether Chrome may use Bluetooth, allow it.",
-               M + 28, y, left - 28) - 16
+    y = step(2, "Pair your phone with the key", y)
+    y = p.text("Install Shhlock from TestFlight. <b>Key → Pair this phone with the key</b>, then press the small button on the "
+               "XIAO board when the app asks. That press is what proves the key is yours.", M + 28, y, left - 28) - 14
 
-    y = step(3, "Put the app on your iPhone", y)
-    y = p.text("Open <font name='Mono' size='8.6'>ios/Safely.xcodeproj</font>, pick your iPhone, press Run — or install it from TestFlight (next page). "
-               "Swipe through the welcome screens and allow Bluetooth. The Devices tab shows the key lighting up.", M + 28, y, left - 28) - 16
+    y = step(3, "Load your passwords", y)
+    y = p.text("Chrome: <font name='Mono' size='8.6'>chrome://password-manager/settings</font> → <b>Export passwords</b>. Safari: File → Export → Passwords. "
+               "AirDrop the .csv to the phone, then <b>Settings → Import from Chrome or Safari</b>. The vault syncs to the key on its own. "
+               "Delete the .csv afterwards — it is plain text.", M + 28, y, left - 28) - 14
 
-    y = step(4, "Pair", y)
-    y = p.text("Phone: <b>Devices → Pair a browser</b>. Chrome: <b>Start pairing</b>. Both show six digits. If they are the same, confirm on both. "
-               "That is the only time you compare anything.", M + 28, y, left - 28) - 16
+    y = step(4, "Install Shhlock for Mac", y)
+    y = p.code(["scripts/install-mac-app.sh"], M + 28, y, left - 28) - 7
+    y = p.text("Allow Bluetooth when asked. From the padlock in the menu bar choose <b>Set up Shhlock…</b> and allow Accessibility "
+               "(System Settings opens; switch Shhlock on).", M + 28, y, left - 28) - 14
 
-    y = step(5, "Bring your passwords over", y)
-    y = p.text("Chrome: <font name='Mono' size='8.6'>chrome://password-manager/settings</font> → <b>Export passwords</b>. "
-               "Safari: File → Export → Passwords. Click the Shlok icon → <b>Import passwords</b> and drop the file in. It is encrypted in the browser and "
-               "travels through the key to the phone — 250 logins take well under a minute.", M + 28, y, left - 28) - 8
-    p.card(M + 28, y - 50, left - 28, 50, fill=HexColor("#FFFBEB"), shadow=False)
-    p.text("<b><font color='#B45309'>Nothing is deleted from Chrome.</font></b> Delete the .csv afterwards (it is plain text), and clear Chrome's saved "
-           "passwords yourself once you trust Shlok.", M + 40, y - 9, left - 52, SMALL)
+    y = step(5, "Approve the Mac", y)
+    y = p.text("With the phone app open, click <b>Pair with my key</b> on the Mac. Both show six digits. Tap <b>Same code</b> on the phone, "
+               "click <b>Same code</b> on the Mac. Done — the phone can go back in your pocket.", M + 28, y, left - 28) - 8
+    p.card(M + 28, y - 46, left - 28, 46, fill=HexColor("#FFFBEB"), shadow=False)
+    p.text("<b><font color='#B45309'>Nothing is deleted from Chrome.</font></b> Turn off Chrome's own “offer to save passwords” so only Shhlock asks.",
+           M + 28 + 12, y - 9, left - 52, SMALL)
 
-    iy = p.image("key.jpg", rx, p.y + 4, rw, radius=14)
-    iy = p.text("The key: a XIAO ESP32C3 on USB power.", rx, iy - 5, rw, CENTER) - 14
-    iy = p.image("ext-pair.jpg", rx, iy, rw, radius=10)
-    iy = p.text("The extension's setup page during pairing.", rx, iy - 5, rw, CENTER) - 14
-    iy = p.image("ext-import.jpg", rx, iy, rw, radius=10)
-    p.text("Import: drop the exported .csv.", rx, iy - 5, rw, CENTER)
+    iy = p.image("ios-key.jpg", rx, p.y + 4, rw * 0.62, radius=12)
+    p.text("The Key tab after pairing and syncing.", rx, iy - 5, rw, CENTER)
     c.showPage()
 
 
@@ -459,13 +427,12 @@ def setup(c):
 def test_and_ship(c):
     p = Page(c, 5, "Test it, ship it, fix it", "From first fill to TestFlight")
     y = p.y
-    shots = [("ios-onboarding.jpg", "Welcome", 603 / 1311), ("ios-vault.jpg", "Vault", 603 / 1311),
-             ("ios-devices.jpg", "Devices", 603 / 1311), ("ios-lock.jpg", "Locked", 603 / 1311), ("ext-popup.jpg", "Chrome popup", 350 / 560)]
+    shots = [("ios-onboarding.jpg", "Welcome"), ("ios-vault.jpg", "Vault"), ("ios-key.jpg", "Key"), ("ios-approve.jpg", "Approving a Mac"), ("ios-lock.jpg", "Locked")]
     sh = 190
-    widths = [sh * ratio for _, _, ratio in shots]
-    gap = (W - 2 * M - sum(widths)) / (len(shots) - 1)
+    sw = sh * 603 / 1311
+    gap = (W - 2 * M - sw * len(shots)) / (len(shots) - 1)
     x = M
-    for (name, label, _), sw in zip(shots, widths):
+    for name, label in shots:
         p.image(name, x, y, sw, radius=11)
         p.text(label, x, y - sh - 5, sw, CENTER)
         x += sw + gap
@@ -474,55 +441,50 @@ def test_and_ship(c):
     col = (W - 2 * M - 14) / 2
     ly = p.heading("Try it", M, y, 12.5)
     tests = [
-        ("First fill.", "Run <font name='Mono' size='8'>scripts/serve-test-page.sh</font>, add a login for <font name='Mono' size='8'>http://localhost:8765</font> in the app, open the page. The fields glow and fill."),
-        ("Walk away.", "Carry the key out of the room. The popup turns to “Looking for key”; a reload fills nothing. Come back: “Ready” within seconds."),
-        ("Ask every time.", "Settings → “Ask me every time”. Reload: the phone asks, Face ID approves. Try Deny as well."),
-        ("Save a new login.", "Type a login by hand on a site Shlok does not know. A “Save this login to Shlok?” card appears."),
-        ("Fill inside iPhone apps.", "iOS Settings → General → AutoFill &amp; Passwords → turn on Shlok. Any app's login now offers your vault."),
+        ("First fill.", "Open a site you imported. The fields fill and the padlock in the menu bar shows “Ready · N logins on your key”."),
+        ("Several logins.", "On a site with two accounts a list appears under the field. Click one."),
+        ("Walk away.", "Take the key out of the room. The menu says “Looking for your Shhlock Key”; nothing fills. Come back: ready again within seconds."),
+        ("Without the phone.", "Switch the phone off. Filling on the Mac keeps working — the vault is on the key."),
+        ("Remove a computer.", "On the phone, Key → ✕ next to the Mac. The Mac gets no answers until approved again."),
     ]
     for i, (title, body) in enumerate(tests):
         p.badge(M, ly, str(i + 1), r=8)
-        ly = p.text(f"<b><font color='#2B1A3F'>{title}</font></b> {body}", M + 23, ly + 1, col - 23, SMALL) - 7
+        ly = p.text(f"<b><font color='#101828'>{title}</font></b> {body}", M + 23, ly + 1, col - 23, SMALL) - 7
 
     rx = M + col + 14
-    ry = p.heading("No iPhone at hand?", rx, y, 12.5)
-    ry = p.text("A simulator runs the phone's exact protocol code on the Mac with four demo logins:", rx, ry, col, SMALL) - 5
-    ry = p.code(["cd core &amp;&amp; swift build", ".build/debug/safely-simphone"], rx, ry, col) - 14
-
-    ry = p.heading("Automated checks", rx, ry, 12.5)
-    ry = p.code(["cd core &amp;&amp; swift test", "node scripts/protocol-test.mjs", "node scripts/ble-e2e-test.mjs"], rx, ry, col) - 6
-    ry = p.text("Unit tests · extension JavaScript against phone Swift · the whole chain over real Bluetooth.", rx, ry, col, SMALL) - 14
+    ry = p.heading("Automated checks", rx, y, 12.5)
+    ry = p.code(["cd core &amp;&amp; swift test", "firmware/flash.sh --test", "cd core &amp;&amp; swift run shhlock-keytest"], rx, ry, col) - 6
+    ry = p.text("Unit tests · then the real key over USB: pairing, approval, a 123-login sync, matching, save, replay, reboot — 21 checks. "
+                "Flash without <font name='Mono' size='8'>--test</font> afterwards.", rx, ry, col, SMALL) - 14
 
     ry = p.heading("TestFlight", rx, ry, 12.5)
-    ry = p.text("Once: sign in under Xcode → Settings → Accounts, and create the app in App Store Connect with bundle ID "
+    ry = p.text("Sign in under Xcode → Settings → Accounts; the app record in App Store Connect uses bundle ID "
                 "<font name='Mono' size='8'>com.codecrackjd.safely</font>. Then:", rx, ry, col, SMALL) - 5
     ry = p.code(["scripts/testflight.sh --upload"], rx, ry, col) - 6
-    ry = p.text("Without <font name='Mono' size='8'>--upload</font> it writes <font name='Mono' size='8'>build/export/Safely.ipa</font> for the Transporter app.", rx, ry, col, SMALL)
 
     y = min(ly, ry) - 12
     fixes = [
-        ("“Helper missing”", "Run scripts/install-host.sh, then reload the extension."),
-        ("“Looking for key”", "Is the key powered? System Settings → Privacy → Bluetooth → Chrome on."),
-        ("“Phone away”", "Open Shlok once on the phone; iOS then keeps the link in the background."),
-        ("Nothing fills", "Does the site's address in the vault match? Check the phone's Activity tab."),
+        ("Menu: “Needs Accessibility”", "System Settings → Privacy & Security → Accessibility → Shhlock on. Re-do after reinstalling."),
+        ("“Looking for your Shhlock Key”", "Is it powered? System Settings → Privacy → Bluetooth → Shhlock on."),
+        ("Pairing the Mac stalls", "The phone app must be open (it approves). Also check the phone shows “Connected and unlocked”."),
+        ("Nothing fills on a site", "Is the login under that domain in the vault? Try Cmd-Shift-F. Some pages need the fallback typing, which takes a second."),
     ]
-    p.card(M, y - 98, W - 2 * M, 98)
+    p.card(M, y - 104, W - 2 * M, 104)
     p.heading("If something is off", M + 14, y - 10, 11.5)
     fw = (W - 2 * M - 28) / 2
     for i, (sym, fix) in enumerate(fixes):
         fx = M + 14 + (i % 2) * fw
-        fy = y - 34 - (i // 2) * 30
-        p.text(f"<b><font color='#2B1A3F'>{sym}</font></b> — {fix}", fx, fy, fw - 10, SMALL)
-    p.text("Helper log: <font name='Mono' size='8'>~/Library/Logs/Safely/host.log</font> &nbsp;·&nbsp; Key log: "
-           "<font name='Mono' size='8'>arduino-cli monitor -p /dev/cu.usbmodem1101 -c baudrate=115200</font> &nbsp;·&nbsp; Protocol: docs/PROTOCOL.md",
-           M, y - 106, W - 2 * M, CENTER)
+        fy = y - 34 - (i // 2) * 32
+        p.text(f"<b><font color='#101828'>{sym}</font></b> — {fix}", fx, fy, fw - 10, SMALL)
+    p.text("Mac log: Set up Shhlock… → Activity log &nbsp;·&nbsp; Key log: <font name='Mono' size='8'>arduino-cli monitor -p /dev/cu.usbmodem1101 -c baudrate=115200</font> &nbsp;·&nbsp; Protocol: docs/PROTOCOL.md",
+           M, y - 112, W - 2 * M, CENTER)
     c.showPage()
 
 
 def main():
     c = canvas.Canvas(str(OUT), pagesize=A4)
-    c.setTitle("Shlok — how it works and how to test it")
-    c.setAuthor("Shlok")
+    c.setTitle("Shhlock — how it works and how to test it")
+    c.setAuthor("Shhlock")
     for page in (cover, how_it_works, security, setup, test_and_ship):
         page(c)
     c.save()
