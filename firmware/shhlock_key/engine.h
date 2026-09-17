@@ -259,7 +259,7 @@ inline void finishPairing() {
   JsonDocument doc;
   doc["t"] = "pair_confirm";
   doc["name"] = KEY_NAME;
-  doc["vaultCount"] = (int)vault::items.size();
+  doc["vaultCount"] = (int)vault::count();
   doc["unlocked"] = vault::unlocked();
   sendSealed(pending.conn, c, doc);
   pending.active = false;
@@ -364,7 +364,7 @@ inline void handleSealed(uint16_t conn, Peer& c, JsonDocument& msg) {
   if (!strcmp(t, "ping")) {
     out["t"] = "pong";
     out["name"] = KEY_NAME;
-    out["vaultCount"] = (int)vault::items.size();
+    out["vaultCount"] = (int)vault::count();
     out["unlocked"] = vault::unlocked();
     reply(conn, c, out, id);
     return;
@@ -377,9 +377,8 @@ inline void handleSealed(uint16_t conn, Peer& c, JsonDocument& msg) {
     if (secret.size() != 32) {
       out["status"] = "error";
     } else {
-      if (!vault::unlocked() && clients.size() == 1 && c.role == ROLE_PHONE) {
+      if (!vault::unlocked() && clients.size() == 1 && c.role == ROLE_PHONE && !LittleFS.exists(vault::FILE_PATH)) {
         vault::unlock(crypto::randomBytes(32));  // brand new key: mint the vault key now
-        vault::save();
       }
       if (!vault::unlocked()) {
         out["status"] = "locked";
@@ -387,7 +386,7 @@ inline void handleSealed(uint16_t conn, Peer& c, JsonDocument& msg) {
         c.wrap = crypto::gcmSeal(wrapKeyFor(secret, c.keyId), vault::key, c.keyId);
         saveClients();
         out["status"] = "ok";
-        out["vaultCount"] = (int)vault::items.size();
+        out["vaultCount"] = (int)vault::count();
       }
     }
     reply(conn, c, out, id);
@@ -404,12 +403,12 @@ inline void handleSealed(uint16_t conn, Peer& c, JsonDocument& msg) {
       Bytes vaultKey;
       if (secret.size() == 32 && !c.wrap.empty() && crypto::gcmOpen(wrapKeyFor(secret, c.keyId), c.wrap, c.keyId, vaultKey) && vault::unlock(vaultKey)) {
         out["status"] = "ok";
-        Serial.printf("[vault] unlocked by %s: %u logins\n", c.name.c_str(), (unsigned)vault::items.size());
+        Serial.printf("[vault] unlocked by %s: %u logins\n", c.name.c_str(), (unsigned)vault::count());
       } else {
         out["status"] = "denied";
       }
     }
-    out["vaultCount"] = (int)vault::items.size();
+    out["vaultCount"] = (int)vault::count();
     reply(conn, c, out, id);
     statusChanged();
     return;
@@ -435,7 +434,7 @@ inline void handleSealed(uint16_t conn, Peer& c, JsonDocument& msg) {
     out["t"] = "creds";
     out["status"] = found.empty() ? "none" : "ok";
     JsonArray arr = out["items"].to<JsonArray>();
-    for (const Item* item : found) vault::itemToJson(*item, arr.add<JsonObject>(), false);
+    for (const Item& item : found) vault::itemToJson(item, arr.add<JsonObject>(), false);
     reply(conn, c, out, id);
     Serial.printf("[get] %s → %u for %s\n", vault::hostOf(origin).c_str(), (unsigned)found.size(), c.name.c_str());
 
@@ -444,43 +443,42 @@ inline void handleSealed(uint16_t conn, Peer& c, JsonDocument& msg) {
     if (msg["item"].is<JsonObjectConst>()) incoming.push_back(vault::itemFromJson(msg["item"].as<JsonObjectConst>()));
     for (JsonObjectConst o : msg["items"].as<JsonArrayConst>()) incoming.push_back(vault::itemFromJson(o));
     vault::MergeSummary s = vault::merge(incoming, epochSeconds);
-    bool last = !strcmp(t, "save") || (int)(msg["batch"] | 1) >= (int)(msg["totalBatches"] | 1);
-    if (last && vault::dirty) vault::save();
     out["t"] = "ack";
     out["status"] = "ok";
     out["batch"] = msg["batch"] | 1;
     out["imported"] = s.imported;
     out["updated"] = s.updated;
     out["skipped"] = s.skipped;
-    out["vaultCount"] = (int)vault::items.size();
+    out["vaultCount"] = (int)vault::count();
     reply(conn, c, out, id);
 
   } else if (!strcmp(t, "vault_pull")) {  // phone: read the vault back in pages
     int offset = msg["offset"] | 0, limit = msg["limit"] | 25;
     out["t"] = "vault_items";
     out["offset"] = offset;
-    out["total"] = (int)vault::items.size();
+    out["total"] = (int)vault::count();
     JsonArray arr = out["items"].to<JsonArray>();
-    for (int i = offset; i < (int)vault::items.size() && i < offset + limit; i++) vault::itemToJson(vault::items[i], arr.add<JsonObject>(), true);
+    for (int i = offset; i < offset + limit; i++) {
+      Item it;
+      if (!vault::itemAt(i, it)) break;
+      vault::itemToJson(it, arr.add<JsonObject>(), true);
+    }
     reply(conn, c, out, id);
 
-  } else if (!strcmp(t, "vault_put")) {  // phone: replace the whole vault, in batches
-    static std::vector<Item> staging;
+  } else if (!strcmp(t, "vault_put")) {  // phone: replace the whole vault, streamed batch by batch
     int batch = msg["batch"] | 1, total = msg["totalBatches"] | 1;
-    if (batch == 1) staging.clear();
-    for (JsonObjectConst o : msg["items"].as<JsonArrayConst>()) staging.push_back(vault::itemFromJson(o));
+    if (batch == 1) vault::beginReplace();
+    for (JsonObjectConst o : msg["items"].as<JsonArrayConst>()) {
+      Item it = vault::itemFromJson(o);
+      if (it.id.isEmpty()) it.id = vault::newId();
+      int32_t off = vault::appendRecord(it);
+      if (off >= 0) vault::indexAdd(it, off);
+    }
     out["t"] = "ack";
     out["status"] = "ok";
     out["batch"] = batch;
-    if (batch >= total) {
-      vault::items.swap(staging);
-      staging.clear();
-      staging.shrink_to_fit();
-      vault::dirty = true;
-      out["status"] = vault::save() ? "ok" : "error";
-      Serial.printf("[vault] replaced: %u logins\n", (unsigned)vault::items.size());
-    }
-    out["vaultCount"] = (int)vault::items.size();
+    if (batch >= total) Serial.printf("[vault] replaced: %u logins\n", (unsigned)vault::count());
+    out["vaultCount"] = (int)vault::count();
     reply(conn, c, out, id);
 
   } else if (!strcmp(t, "approve_reply") && c.role == ROLE_PHONE) {

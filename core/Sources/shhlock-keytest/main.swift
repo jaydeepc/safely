@@ -92,7 +92,7 @@ func waitFor(_ what: String, _ seconds: Double = 15, _ test: @escaping () -> Boo
 }
 
 func items(_ n: Int, prefix: String) -> [WireItem] {
-    (0..<n).map { WireItem(title: "\(prefix) \($0)", url: "https://\(prefix.lowercased())\($0).test/login", username: "user\($0)@example.com", password: "pw-\(prefix)-\($0)-" + String(repeating: "x", count: 20)) }
+    (0..<n).map { WireItem(title: "\(prefix) \($0) — some longer site name", url: "https://accounts.\(prefix.lowercased())\($0).example-domain.test/login/start", username: "user\($0).longer.name@example.com", password: "pw-\(prefix)-\($0)-" + String(repeating: "x", count: 24), notes: $0 % 3 == 0 ? "security question: first pet, answer stored elsewhere" : nil) }
 }
 
 Task { @MainActor in
@@ -112,7 +112,7 @@ Task { @MainActor in
     print("2. unlock and load the vault")
     var reply = await phone.unlock()
     check(reply?.status == "ok" && reply?.vaultCount == 0, "fresh vault unlocked, 0 logins")
-    let vault = items(120, prefix: "Site") + [WireItem(title: "GitHub", url: "https://github.com/login", username: "demo@shhlock.test", password: "gh-secret-1"),
+    let vault = items(400, prefix: "Site") + [WireItem(title: "GitHub", url: "https://github.com/login", username: "demo@shhlock.test", password: "gh-secret-1"),
                                              WireItem(title: "Example", url: "https://example.com", username: "alice", password: "ex-1"),
                                              WireItem(title: "Example work", url: "https://login.example.com", username: "alice@work", password: "ex-2", updatedAt: 2_000_000_000)]
     let batches = stride(from: 0, to: vault.count, by: 25).map { Array(vault[$0..<min($0 + 25, vault.count)]) }
@@ -143,6 +143,8 @@ Task { @MainActor in
     await sleep(1.0)
 
     print("4. the computer unlocks and fetches logins")
+    let vaultPullPeek = await phone.request({ var m = Message(t: Message.Kind.ping); return m }())
+    check(vaultPullPeek?.vaultCount == vault.count, "key reports \(vaultPullPeek?.vaultCount ?? -1) logins after the big sync")
     reply = await computer.unlock()
     check(reply?.status == "ok", "computer unlock (vault already open)")
     var get = Message(t: Message.Kind.get)

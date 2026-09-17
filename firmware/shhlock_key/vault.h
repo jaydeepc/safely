@@ -17,13 +17,30 @@ struct Item {
 namespace vault {
 
 static const char* FILE_PATH = "/vault.bin";
-static const char* AAD = "shhlock/v2/vault";
 
-static std::vector<Item> items;
+/// One encrypted record per login on LittleFS; only this index lives in RAM (~40 bytes per login),
+/// so a vault of a thousand logins fits the ESP32's memory.
+struct Entry {
+  uint32_t offset;     // where the record starts in the file
+  uint32_t updatedAt;
+  String host;         // normalised, for matching
+  String user;         // lower-cased, for de-duplication
+  bool deleted;        // superseded by a later record; cleaned up at the next full sync
+};
+
+static const char* AAD_RECORD = "shhlock/v2/rec";
+static const uint8_t RECORD_MAGIC = 0xA5;
+
+static std::vector<Entry> index_;
 static Bytes key;         // 32 bytes while unlocked, empty while locked
 static bool dirty = false;
 
 inline bool unlocked() { return key.size() == 32; }
+inline size_t count() {
+  size_t n = 0;
+  for (const Entry& e : index_) if (!e.deleted) n++;
+  return n;
+}
 
 // ── domain matching ──
 
@@ -89,28 +106,7 @@ inline String registrableDomain(const String& host) {
   return suffix(2);
 }
 
-/// Items usable on `origin`: exact host first, then same registrable domain; newest first within each group.
-inline std::vector<const Item*> matches(const String& origin) {
-  std::vector<std::pair<const Item*, int>> scored;
-  String host = hostOf(origin);
-  if (host.isEmpty()) return {};
-  String domain = registrableDomain(host);
-  for (const Item& item : items) {
-    String ih = hostOf(item.url);
-    if (ih.isEmpty()) continue;
-    if (ih == host) scored.push_back({&item, 2});
-    else if (registrableDomain(ih) == domain) scored.push_back({&item, 1});
-  }
-  std::stable_sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
-    if (a.second != b.second) return a.second > b.second;
-    return a.first->updatedAt > b.first->updatedAt;
-  });
-  std::vector<const Item*> out;
-  for (auto& s : scored) out.push_back(s.first);
-  return out;
-}
-
-// ── merge ──
+// ── merge helpers ──
 
 struct MergeSummary {
   int imported = 0, updated = 0, skipped = 0;
@@ -133,42 +129,6 @@ inline String newId() {
   }
   s.toUpperCase();
   return s;
-}
-
-inline MergeSummary merge(const std::vector<Item>& incoming, uint32_t now) {
-  MergeSummary summary;
-  for (const Item& in : incoming) {
-    if (in.password.isEmpty() || (in.url.isEmpty() && in.title.isEmpty())) {
-      summary.skipped++;
-      continue;
-    }
-    String k = mergeKey(in);
-    Item* existing = nullptr;
-    for (Item& it : items) {
-      if (mergeKey(it) == k) {
-        existing = &it;
-        break;
-      }
-    }
-    if (existing) {
-      if (existing->password == in.password) {
-        summary.skipped++;
-      } else {
-        existing->password = in.password;
-        existing->updatedAt = now;
-        summary.updated++;
-      }
-    } else {
-      Item item = in;
-      if (item.id.isEmpty()) item.id = newId();
-      if (item.title.isEmpty()) item.title = hostOf(item.url);
-      if (!item.updatedAt) item.updatedAt = now;
-      items.push_back(item);
-      summary.imported++;
-    }
-  }
-  if (summary.imported || summary.updated) dirty = true;
-  return summary;
 }
 
 // ── JSON (de)serialisation shared with the wire format ──
@@ -194,10 +154,6 @@ inline Item itemFromJson(JsonObjectConst o) {
   item.updatedAt = o["updatedAt"] | 0;
   return item;
 }
-
-// ── storage ──
-
-inline bool begin() { return LittleFS.begin(true); }
 
 // Streams the vault to JSON without an intermediate document, escaping as it goes.
 inline void appendEscaped(Bytes& out, const String& s) {
@@ -231,72 +187,184 @@ inline void appendField(Bytes& out, const char* name, const String& value, bool&
   appendEscaped(out, value);
 }
 
-inline bool save() {
-  if (!unlocked()) return false;
+// ── records on flash ──
+
+inline bool begin() { return LittleFS.begin(true); }
+
+inline String userKey(const String& username) {
+  String u = username;
+  u.toLowerCase();
+  return u;
+}
+
+/// Serialises one item to JSON bytes (no intermediate document).
+inline Bytes encodeItem(const Item& it) {
   Bytes buf;
-  size_t estimate = 2;
-  for (const Item& it : items) estimate += 80 + it.id.length() + it.title.length() + it.url.length() + it.username.length() + it.password.length() + it.notes.length();
-  buf.reserve(estimate + 28);
-  buf.push_back('[');
-  bool firstItem = true;
-  for (const Item& it : items) {
-    if (!firstItem) buf.push_back(',');
-    firstItem = false;
-    buf.push_back('{');
-    bool first = true;
-    appendField(buf, "id", it.id, first);
-    appendField(buf, "title", it.title, first);
-    appendField(buf, "url", it.url, first);
-    appendField(buf, "username", it.username, first);
-    appendField(buf, "password", it.password, first);
-    if (!it.notes.isEmpty()) appendField(buf, "notes", it.notes, first);
-    if (it.updatedAt) {
-      char num[24];
-      snprintf(num, sizeof num, ",\"updatedAt\":%lu", (unsigned long)it.updatedAt);
-      for (char* p = num; *p; p++) buf.push_back(*p);
-    }
-    buf.push_back('}');
+  buf.reserve(80 + it.id.length() + it.title.length() + it.url.length() + it.username.length() + it.password.length() + it.notes.length());
+  buf.push_back('{');
+  bool first = true;
+  appendField(buf, "id", it.id, first);
+  appendField(buf, "title", it.title, first);
+  appendField(buf, "url", it.url, first);
+  appendField(buf, "username", it.username, first);
+  appendField(buf, "password", it.password, first);
+  if (!it.notes.isEmpty()) appendField(buf, "notes", it.notes, first);
+  if (it.updatedAt) {
+    char num[24];
+    snprintf(num, sizeof num, ",\"updatedAt\":%lu", (unsigned long)it.updatedAt);
+    for (char* p = num; *p; p++) buf.push_back(*p);
   }
-  buf.push_back(']');
-  if (!crypto::gcmSealInPlace(key, buf, crypto::bytes(AAD))) return false;
-  File f = LittleFS.open(FILE_PATH, "w");
-  if (!f) return false;
-  bool ok = f.write(buf.data(), buf.size()) == buf.size();
+  buf.push_back('}');
+  return buf;
+}
+
+/// Appends one sealed record; returns its offset or -1.
+inline int32_t appendRecord(const Item& it) {
+  if (!unlocked()) return -1;
+  Bytes buf = encodeItem(it);
+  if (!crypto::gcmSealInPlace(key, buf, crypto::bytes(AAD_RECORD))) return -1;
+  File f = LittleFS.open(FILE_PATH, "a");
+  if (!f) return -1;
+  int32_t offset = f.size();
+  uint8_t header[3] = {RECORD_MAGIC, (uint8_t)(buf.size() & 0xFF), (uint8_t)(buf.size() >> 8)};
+  bool ok = f.write(header, 3) == 3 && f.write(buf.data(), buf.size()) == buf.size();
   f.close();
-  if (ok) dirty = false;
+  return ok ? offset : -1;
+}
+
+/// Reads and decrypts the record at `offset`.
+inline bool readRecord(File& f, uint32_t offset, Item& out) {
+  if (!f.seek(offset)) return false;
+  uint8_t header[3];
+  if (f.read(header, 3) != 3 || header[0] != RECORD_MAGIC) return false;
+  size_t len = header[1] | (header[2] << 8);
+  Bytes buf(len);
+  if (f.read(buf.data(), len) != len) return false;
+  if (!crypto::gcmOpenInPlace(key, buf, crypto::bytes(AAD_RECORD))) return false;
+  buf.push_back(0);
+  JsonDocument doc;
+  if (deserializeJson(doc, (char*)buf.data()) != DeserializationError::Ok) return false;
+  out = itemFromJson(doc.as<JsonObjectConst>());
+  return true;
+}
+
+inline bool readRecord(uint32_t offset, Item& out) {
+  File f = LittleFS.open(FILE_PATH, "r");
+  if (!f) return false;
+  bool ok = readRecord(f, offset, out);
+  f.close();
   return ok;
 }
 
-/// Decrypts the stored vault with `vaultKey`. Succeeds with an empty vault when no file exists yet.
+inline void indexAdd(const Item& it, uint32_t offset) {
+  String host = hostOf(it.url), user = userKey(it.username);
+  for (Entry& e : index_) if (!e.deleted && e.host == host && e.user == user) e.deleted = true;  // superseded
+  index_.push_back(Entry{offset, it.updatedAt, host, user, false});
+}
+
+/// Builds the index by walking the file. Records that fail to open are skipped.
 inline bool unlock(const Bytes& vaultKey) {
   if (vaultKey.size() != 32) return false;
-  items.clear();
-  if (LittleFS.exists(FILE_PATH)) {
-    File f = LittleFS.open(FILE_PATH, "r");
-    if (!f) return false;
-    Bytes buf(f.size());
-    f.read(buf.data(), buf.size());
-    f.close();
-    if (!crypto::gcmOpenInPlace(vaultKey, buf, crypto::bytes(AAD))) return false;
-    buf.push_back(0);
-    JsonDocument doc;
-    // writable char* → ArduinoJson parses in place instead of copying every string
-    if (deserializeJson(doc, (char*)buf.data()) != DeserializationError::Ok) return false;
-    for (JsonObjectConst o : doc.as<JsonArrayConst>()) items.push_back(itemFromJson(o));
-  }
+  index_.clear();
   key = vaultKey;
-  dirty = false;
+  if (!LittleFS.exists(FILE_PATH)) return true;
+  File f = LittleFS.open(FILE_PATH, "r");
+  if (!f) { key.clear(); return false; }
+  uint32_t offset = 0, size = f.size();
+  bool any = false, bad = false;
+  while (offset + 3 <= size) {
+    Item it;
+    if (!readRecord(f, offset, it)) { bad = true; break; }
+    indexAdd(it, offset);
+    any = true;
+    uint8_t header[3];
+    f.seek(offset);
+    f.read(header, 3);
+    offset += 3 + (header[1] | (header[2] << 8));
+  }
+  f.close();
+  if (bad && !any) { key.clear(); index_.clear(); return false; }  // wrong key for this vault
   return true;
 }
 
 inline void lock() {
-  items.clear();
+  index_.clear();
   key.clear();
 }
 
 inline void wipe() {
   lock();
   LittleFS.remove(FILE_PATH);
+}
+
+/// Starts a full replacement (phone sync): the file is rewritten from scratch.
+inline void beginReplace() {
+  index_.clear();
+  LittleFS.remove(FILE_PATH);
+}
+
+/// Items usable on `origin`: exact host first, then same registrable domain; newest first.
+inline std::vector<Item> matches(const String& origin) {
+  std::vector<Item> out;
+  String host = hostOf(origin);
+  if (host.isEmpty() || !unlocked()) return out;
+  String domain = registrableDomain(host);
+  std::vector<std::pair<const Entry*, int>> scored;
+  for (const Entry& e : index_) {
+    if (e.deleted || e.host.isEmpty()) continue;
+    if (e.host == host) scored.push_back({&e, 2});
+    else if (registrableDomain(e.host) == domain) scored.push_back({&e, 1});
+  }
+  std::stable_sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
+    if (a.second != b.second) return a.second > b.second;
+    return a.first->updatedAt > b.first->updatedAt;
+  });
+  File f = LittleFS.open(FILE_PATH, "r");
+  if (!f) return out;
+  for (auto& s : scored) {
+    Item it;
+    if (readRecord(f, s.first->offset, it)) out.push_back(it);
+    if (out.size() >= 12) break;
+  }
+  f.close();
+  return out;
+}
+
+/// The n-th live item (for paging the vault back to the phone).
+inline bool itemAt(size_t n, Item& out) {
+  size_t seen = 0;
+  for (const Entry& e : index_) {
+    if (e.deleted) continue;
+    if (seen++ == n) return readRecord(e.offset, out);
+  }
+  return false;
+}
+
+inline MergeSummary merge(const std::vector<Item>& incoming, uint32_t now) {
+  MergeSummary summary;
+  for (const Item& in : incoming) {
+    if (in.password.isEmpty() || (in.url.isEmpty() && in.title.isEmpty())) { summary.skipped++; continue; }
+    String host = hostOf(in.url), user = userKey(in.username);
+    Entry* existing = nullptr;
+    for (Entry& e : index_) if (!e.deleted && e.host == host && e.user == user) { existing = &e; break; }
+    Item item = in;
+    if (existing) {
+      Item old;
+      if (readRecord(existing->offset, old) && old.password == in.password) { summary.skipped++; continue; }
+      if (item.id.isEmpty()) item.id = old.id;
+      if (item.title.isEmpty()) item.title = old.title;
+      item.updatedAt = now;
+      summary.updated++;
+    } else {
+      if (item.id.isEmpty()) item.id = newId();
+      if (item.title.isEmpty()) item.title = host;
+      if (!item.updatedAt) item.updatedAt = now;
+      summary.imported++;
+    }
+    int32_t offset = appendRecord(item);
+    if (offset >= 0) indexAdd(item, offset);
+  }
+  return summary;
 }
 
 }  // namespace vault

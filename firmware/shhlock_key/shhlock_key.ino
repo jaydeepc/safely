@@ -344,7 +344,7 @@ void loop() {
   static uint32_t lastBeat = 0;
   if (millis() - lastBeat > 30000) {
     lastBeat = millis();
-    Serial.printf("[beat] peers=%u logins=%u unlocked=%d heap=%lu btn=%d\n", server->getConnectedCount(), (unsigned)vault::items.size(), vault::unlocked(), (unsigned long)ESP.getFreeHeap(), digitalRead(BUTTON_PIN));
+    Serial.printf("[beat] peers=%u logins=%u unlocked=%d heap=%lu btn=%d\n", server->getConnectedCount(), (unsigned)vault::count(), vault::unlocked(), (unsigned long)ESP.getFreeHeap(), digitalRead(BUTTON_PIN));
   }
   delay(2);
 }
