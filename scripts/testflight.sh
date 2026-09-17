@@ -29,7 +29,7 @@ cat > "$OPTIONS" <<PLIST
 </dict></plist>
 PLIST
 
-echo "▸ Archiving build $BUILD_NUMBER…"
+echo "▸ Archiving build ${BUILD_NUMBER}…"
 xcodebuild -project "$ROOT/ios/Safely.xcodeproj" -scheme Safely -configuration Release \
   -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
   -allowProvisioningUpdates CURRENT_PROJECT_VERSION="$BUILD_NUMBER" archive | grep -E "error:|warning: .*provision|ARCHIVE|\*\* " || true
