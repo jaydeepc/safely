@@ -93,6 +93,7 @@ bool buttonWasPressed() {
 static void pollButton() {
   bool down = digitalRead(BUTTON_PIN) == LOW;
   uint32_t now = millis();
+  if (down != wasDown) Serial.printf("[button] %s\n", down ? "down" : "up");
   if (down && !wasDown) pressedSince = now;
   if (!down && wasDown && now - pressedSince > 40 && now - pressedSince < 3000) pressFlag = true;
   if (down && wasDown && now - pressedSince > 8000) {
@@ -180,17 +181,18 @@ class ServerCallbacks : public NimBLEServerCallbacks {
     portENTER_CRITICAL(&connMux);
     conn(info.getConnHandle(), true);
     portEXIT_CRITICAL(&connMux);
-    s->updateConnParams(info.getConnHandle(), 12, 24, 0, 400);
+    // The centrals' own parameters (iOS/macOS use ~30 ms) work fine; asking for more made a second link flap.
     Serial.printf("[link] connected handle=%u peers=%u\n", info.getConnHandle(), s->getConnectedCount());
     if (s->getConnectedCount() < 5) NimBLEDevice::startAdvertising();
   }
   void onDisconnect(NimBLEServer* s, NimBLEConnInfo& info, int reason) override {
     portENTER_CRITICAL(&connMux);
-    if (Conn* c = conn(info.getConnHandle(), false)) c->used = false;
+    Conn* c = conn(info.getConnHandle(), false);
+    if (c) c->used = false;
     portEXIT_CRITICAL(&connMux);
     engine::linkClosed(info.getConnHandle());
     statusDirty = true;
-    Serial.printf("[link] disconnected handle=%u reason=0x%x\n", info.getConnHandle(), reason);
+    Serial.printf("[link] disconnected handle=%u reason=0x%x (%s)\n", info.getConnHandle(), reason, c && c->phoneSide ? "phone side" : "computer side");
     NimBLEDevice::startAdvertising();
   }
   void onMTUChange(uint16_t mtu, NimBLEConnInfo& info) override {
@@ -278,6 +280,7 @@ void setup() {
   delay(300);
   Serial.printf("\nShhlock Key firmware %s\n", FW_VERSION);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+  Serial.printf("[button] idle level %d (1 = released)\n", digitalRead(BUTTON_PIN));
 
   inQueue = xQueueCreate(IN_QUEUE, sizeof(Frame));
   outQueue = xQueueCreate(OUT_QUEUE, sizeof(Frame));
@@ -341,7 +344,7 @@ void loop() {
   static uint32_t lastBeat = 0;
   if (millis() - lastBeat > 30000) {
     lastBeat = millis();
-    Serial.printf("[beat] peers=%u logins=%u unlocked=%d heap=%lu\n", server->getConnectedCount(), (unsigned)vault::items.size(), vault::unlocked(), (unsigned long)ESP.getFreeHeap());
+    Serial.printf("[beat] peers=%u logins=%u unlocked=%d heap=%lu btn=%d\n", server->getConnectedCount(), (unsigned)vault::items.size(), vault::unlocked(), (unsigned long)ESP.getFreeHeap(), digitalRead(BUTTON_PIN));
   }
   delay(2);
 }
