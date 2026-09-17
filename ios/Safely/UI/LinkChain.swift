@@ -11,25 +11,25 @@ struct LinkChain: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            node("iphone", "Phone", on: true)
+            node("iphone", "Phone", on: true, fill: Theme.gradient, glow: Theme.primary)
             Wire(on: keyOn, seeking: state.bluetooth == .on && !keyOn)
-            node("key.horizontal.fill", "Key", on: keyOn)
+            node("key.horizontal.fill", "Key", on: keyOn, fill: Theme.sunnyGradient, glow: Theme.tangerine)
             Wire(on: browserOn, seeking: keyOn && !browserOn)
-            node("laptopcomputer", "Browser", on: browserOn)
+            node("laptopcomputer", "Browser", on: browserOn, fill: Theme.grapeGradient, glow: Theme.grape)
         }
     }
 
-    private func node(_ symbol: String, _ label: String, on: Bool) -> some View {
+    private func node(_ symbol: String, _ label: String, on: Bool, fill: LinearGradient, glow: Color) -> some View {
         let size: CGFloat = compact ? 42 : 54
         return VStack(spacing: 7) {
             ZStack {
                 if on {
-                    PulseRing(size: size)
+                    PulseRing(size: size, color: glow)
                 }
                 RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
-                    .fill(on ? AnyShapeStyle(Theme.gradient) : AnyShapeStyle(Theme.field))
+                    .fill(on ? AnyShapeStyle(fill) : AnyShapeStyle(Theme.field))
                     .frame(width: size, height: size)
-                    .shadow(color: on ? Theme.indigo.opacity(0.3) : .clear, radius: 10, y: 5)
+                    .shadow(color: on ? glow.opacity(0.35) : .clear, radius: 10, y: 5)
                 Image(systemName: symbol)
                     .font(.system(size: size * 0.4, weight: .semibold))
                     .foregroundStyle(on ? .white : Theme.muted.opacity(0.7))
@@ -46,11 +46,12 @@ struct LinkChain: View {
 
 private struct PulseRing: View {
     let size: CGFloat
+    let color: Color
     @State private var pulse = false
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.4, style: .continuous)
-            .stroke(Theme.indigo.opacity(0.35), lineWidth: 2)
+            .stroke(color.opacity(0.4), lineWidth: 2)
             .frame(width: size, height: size)
             .scaleEffect(pulse ? 1.45 : 1)
             .opacity(pulse ? 0 : 0.9)
@@ -71,7 +72,7 @@ private struct Wire: View {
                 var track = Path()
                 track.move(to: CGPoint(x: 4, y: y))
                 track.addLine(to: CGPoint(x: size.width - 4, y: y))
-                context.stroke(track, with: .color(on ? Theme.indigo.opacity(0.22) : Theme.muted.opacity(0.18)),
+                context.stroke(track, with: .color(on ? Theme.pink.opacity(0.28) : Theme.muted.opacity(0.18)),
                                style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: on ? [] : [2, 7]))
 
                 guard on || seeking else { return }
@@ -85,9 +86,9 @@ private struct Wire: View {
                     let x = 4 + (size.width - 8) * progress
                     let fade = on ? sin(phase * .pi) : 0.7
                     let dot = Path(ellipseIn: CGRect(x: x - 4, y: y - 4, width: 8, height: 8))
-                    context.fill(dot, with: .color((on ? Theme.mint : Theme.muted).opacity(fade)))
+                    context.fill(dot, with: .color((on ? [Theme.pink, Theme.mint, Theme.sunny][i % 3] : Theme.muted).opacity(fade)))
                     if on {
-                        context.fill(Path(ellipseIn: CGRect(x: x - 8, y: y - 8, width: 16, height: 16)), with: .color(Theme.indigo.opacity(0.18 * fade)))
+                        context.fill(Path(ellipseIn: CGRect(x: x - 8, y: y - 8, width: 16, height: 16)), with: .color(Theme.pink.opacity(0.16 * fade)))
                     }
                 }
             }
@@ -109,7 +110,7 @@ struct LinkStatusPill: View {
         default: break
         }
         if !state.keyConnected { return ("Looking for your key", Theme.amber) }
-        if !state.peerPresent { return ("Key connected", Theme.indigo) }
+        if !state.peerPresent { return ("Key connected", Theme.grape) }
         return ("Ready to fill", Theme.green)
     }
 

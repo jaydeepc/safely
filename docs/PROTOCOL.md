@@ -1,9 +1,9 @@
-# Safely protocol v1
+# Shlok protocol v1
 
 Implementations: `core/Sources/SafelyCore` (Swift — phone, helper) and `extension/lib` (JavaScript — browser).
 `scripts/protocol-test.mjs` runs one against the other.
 
-## 1. Transport: the Safely Key (GATT)
+## 1. Transport: the Shlok Key (GATT)
 
 Service `5AFE0001-7A3C-4B1E-9D2F-C0DE5AFE1A00`. Characteristic UUIDs differ in the fourth hex group.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds docs/Safely-Guide.pdf — the illustrated "how it works and how to test it" guide.
+"""Builds docs/Shlok-Guide.pdf — the illustrated "how it works and how to test it" guide.
 
     python3 scripts/make-guide.py        (needs: pip install reportlab pillow)
 """
@@ -17,7 +17,7 @@ from reportlab.platypus import Paragraph
 
 ROOT = Path(__file__).resolve().parent.parent
 IMG = ROOT / "docs" / "images"
-OUT = ROOT / "docs" / "Safely-Guide.pdf"
+OUT = ROOT / "docs" / "Shlok-Guide.pdf"
 FONTS = Path("/System/Library/Fonts/Supplemental")
 
 pdfmetrics.registerFont(TTFont("Body", str(FONTS / "Arial.ttf")))
@@ -26,18 +26,19 @@ pdfmetrics.registerFont(TTFont("Display", str(FONTS / "Arial Rounded Bold.ttf"))
 pdfmetrics.registerFont(TTFont("Mono", str(FONTS / "Courier New Bold.ttf")))
 pdfmetrics.registerFontFamily("Body", normal="Body", bold="Body-Bold", italic="Body", boldItalic="Body-Bold")
 
-INK, MUTED, LINE = HexColor("#0F172A"), HexColor("#64748B"), HexColor("#E2E8F0")
-INDIGO, DEEP, MINT = HexColor("#6366F1"), HexColor("#4F46E5"), HexColor("#2DD4BF")
-CANVAS, SOFT, GREEN, AMBER, ROSE = HexColor("#F6F7FD"), HexColor("#EEF2FF"), HexColor("#16A34A"), HexColor("#B45309"), HexColor("#E11D48")
+INK, MUTED, LINE = HexColor("#2B1A3F"), HexColor("#80708F"), HexColor("#F3E3E1")
+INDIGO, DEEP, MINT = HexColor("#FF4F79"), HexColor("#EE3366"), HexColor("#FF9A3D")  # primary, deep, gradient end
+GRAPE, SKY = HexColor("#7C4DFF"), HexColor("#19B3E6")
+CANVAS, SOFT, GREEN, AMBER, ROSE = HexColor("#FFF7EE"), HexColor("#FFF0E8"), HexColor("#10BA82"), HexColor("#B45309"), HexColor("#EE2E54")
 
 W, H = A4
 M = 44  # page margin
 
-BODY = ParagraphStyle("body", fontName="Body", fontSize=10, leading=14.5, textColor=HexColor("#334155"))
+BODY = ParagraphStyle("body", fontName="Body", fontSize=10, leading=14.5, textColor=HexColor("#4A3A5C"))
 SMALL = ParagraphStyle("small", parent=BODY, fontSize=8.6, leading=12, textColor=MUTED)
 CENTER = ParagraphStyle("center", parent=SMALL, alignment=TA_CENTER)
-LEAD = ParagraphStyle("lead", parent=BODY, fontSize=12, leading=17.5, textColor=HexColor("#475569"))
-CODE = ParagraphStyle("code", fontName="Mono", fontSize=8.8, leading=12.5, textColor=HexColor("#E2E8F0"))
+LEAD = ParagraphStyle("lead", parent=BODY, fontSize=12, leading=17.5, textColor=HexColor("#6B5A7D"))
+CODE = ParagraphStyle("code", fontName="Mono", fontSize=8.8, leading=12.5, textColor=HexColor("#FFE9D6"))
 
 
 class Page:
@@ -45,7 +46,7 @@ class Page:
         self.c = c
         c.setFillColor(CANVAS)
         c.rect(0, 0, W, H, stroke=0, fill=1)
-        for x, y, r, col in ((40, H - 30, 190, "#C7D2FE"), (W - 30, H - 260, 170, "#A7F3D0"), (W * 0.45, -40, 180, "#FBCFE8")):
+        for x, y, r, col in ((40, H - 30, 190, "#FFC8A0"), (W - 30, H - 260, 170, "#FFE680"), (W * 0.45, -40, 180, "#FFB8DC")):
             self.glow(x, y, r, HexColor(col))
         self.y = H - M
         if title:
@@ -58,7 +59,7 @@ class Page:
             self.y -= 58
         c.setFont("Body", 8)
         c.setFillColor(MUTED)
-        c.drawString(M, 24, "Safely · how it works and how to test it")
+        c.drawString(M, 24, "Shlok · how it works and how to test it")
         c.drawRightString(W - M, 24, str(number))
 
     def glow(self, x, y, radius, color):
@@ -71,7 +72,7 @@ class Page:
         c = self.c
         if shadow:
             for i in range(6, 0, -1):
-                c.setFillColor(Color(0.31, 0.27, 0.90, alpha=0.012))
+                c.setFillColor(Color(0.93, 0.20, 0.40, alpha=0.012))
                 c.roundRect(x - i, y - i - 3, w + 2 * i, h + 2 * i, radius + i, stroke=0, fill=1)
         c.setFillColor(fill)
         c.roundRect(x, y, w, h, radius, stroke=0, fill=1)
@@ -167,13 +168,10 @@ def arrow(c, x1, y1, x2, y2, color=INDIGO, dashed=False, width=1.6):
 
 def cover(c):
     p = Page(c, 1)
-    gradient_box(c, M, H - M - 30, 30, 30, 9)
-    c.setFillColor(white)
-    c.setFont("Display", 17)
-    c.drawCentredString(M + 15, H - M - 21, "S")
+    c.drawImage(ImageReader(str(ROOT / "design" / "mascot.png")), M - 4, H - M - 36, 40, 40, mask="auto")
     c.setFillColor(INK)
     c.setFont("Display", 17)
-    c.drawString(M + 40, H - M - 21, "Safely")
+    c.drawString(M + 40, H - M - 21, "Shlok")
 
     c.setFont("Display", 38)
     c.drawString(M, H - 150, "Your passwords live")
@@ -182,7 +180,7 @@ def cover(c):
     c.drawString(M, H - 238, "A key in your pocket")
     c.drawString(M, H - 282, "does the rest.")
 
-    y = p.text("Safely is a password vault on your iPhone, a thumbnail-sized Bluetooth key (a Seeed Studio XIAO ESP32C3), "
+    y = p.text("Shlok is a password vault on your iPhone, a thumbnail-sized Bluetooth key (a Seeed Studio XIAO ESP32C3), "
                "and a Chrome extension. Open a login page with the key and phone nearby and the form fills itself. "
                "Walk away, and the browser knows nothing — because it never stored anything.", M, H - 306, W - 2 * M - 60, LEAD)
 
@@ -218,7 +216,7 @@ def how_it_works(c):
     dh = 150
     p.card(M, y - dh, W - 2 * M, dh)
     nodes = [("Chrome", "extension", "finds the form, fills it"), ("Helper", "safely-host", "keeps Bluetooth open"),
-             ("Safely Key", "XIAO ESP32C3", "relays, reads nothing"), ("iPhone", "Safely app", "vault + decisions")]
+             ("Shlok Key", "XIAO ESP32C3", "relays, reads nothing"), ("iPhone", "Shlok app", "vault + decisions")]
     nw, nh = 82, 58
     gap = (W - 2 * M - 40 - 4 * nw) / 3
     ny = y - 44 - nh
@@ -244,7 +242,7 @@ def how_it_works(c):
     for i, label in enumerate(links):
         x1, x2 = xs[i] + nw + 4, xs[i + 1] - 4
         arrow(c, x1, ny + nh / 2 + 7, x2, ny + nh / 2 + 7)
-        arrow(c, x2, ny + nh / 2 - 7, x1, ny + nh / 2 - 7, color=MINT)
+        arrow(c, x2, ny + nh / 2 - 7, x1, ny + nh / 2 - 7, color=GRAPE)
         c.setFillColor(MUTED)
         c.setFont("Body", 7)
         c.drawCentredString((x1 + x2) / 2, ny + nh / 2 + 24, label[0])
@@ -280,7 +278,7 @@ def how_it_works(c):
     yy = y0 - 4
     for i, (title, body) in enumerate(steps):
         p.badge(M, yy, str(i + 1), r=8.5)
-        yy = p.text(f"<b><font color='#0F172A'>{title}</font></b> {body}", M + 25, yy + 1, left - 40, BODY) - 8
+        yy = p.text(f"<b><font color='#2B1A3F'>{title}</font></b> {body}", M + 25, yy + 1, left - 40, BODY) - 8
 
     rx = M + left + 6
     rw = W - M - rx
@@ -297,7 +295,7 @@ def how_it_works(c):
     col = (W - 2 * M - 24) / 3
     extras = [
         ("It finds you", "Phone and computer each keep a standing Bluetooth request for the key. The moment it is in range again, both links come back — nothing to tap, no app to open."),
-        ("It works while asleep", "iOS wakes Safely in the background when the key delivers a message, so the phone can stay locked in your pocket while the form fills."),
+        ("It works while asleep", "iOS wakes Shlok in the background when the key delivers a message, so the phone can stay locked in your pocket while the form fills."),
         ("It learns new logins", "Sign in somewhere by hand and the extension offers to save the login — to the phone, through the key. Chrome's own password manager is not involved."),
     ]
     for i, (title, body) in enumerate(extras):
@@ -347,7 +345,7 @@ def security(c):
             c.drawCentredString((bx + px) / 2, my - 4.5, name)
             my -= 36
             continue
-        arrow(c, bx + 3 if right else px - 3, my, px - 3 if right else bx + 3, my, color=INDIGO if right else MINT)
+        arrow(c, bx + 3 if right else px - 3, my, px - 3 if right else bx + 3, my, color=INDIGO if right else GRAPE)
         c.setFillColor(INK)
         c.setFont("Mono", 8.8)
         c.drawCentredString((bx + px) / 2, my + 5, name)
@@ -365,8 +363,8 @@ def security(c):
     rows = [
         ("Chrome extension", "A non-extractable session key. Passwords only for the page you are on, only in memory.", "Nothing on disk. No vault.", GREEN),
         ("Bluetooth helper", "Sealed envelopes passing through.", "No keys. Cannot decrypt.", GREEN),
-        ("Safely Key", "Sealed frames for a few milliseconds.", "No storage. Lose it: flash a new one for a few dollars.", GREEN),
-        ("iPhone app", "Everything — that is its job.", "AES-256 file; key in the Keychain, this device only, never iCloud.", INDIGO),
+        ("Shlok Key", "Sealed frames for a few milliseconds.", "No storage. Lose it: flash a new one for a few dollars.", GREEN),
+        ("iPhone app", "Everything — that is its job.", "AES-256 file; key in the Keychain, this device only, never iCloud.", GRAPE),
     ]
     cw = [112, 214, W - 2 * M - 112 - 214]
     rh = 36
@@ -421,7 +419,7 @@ def setup(c):
         return y - 26
 
     y = step(1, "Power the key", y)
-    y = p.text("Your XIAO ESP32C3 is already flashed with the Safely firmware and advertising as <b>Safely Key</b>. Plug it into any USB "
+    y = p.text("Your XIAO ESP32C3 is already flashed with the Shlok firmware and advertising as <b>Shlok Key</b>. Plug it into any USB "
                "power — a battery pack in your bag works. To re-flash after a code change:", M + 28, y, left - 28) - 6
     y = p.code(["firmware/flash.sh"], M + 28, y, left - 28) - 16
 
@@ -441,11 +439,11 @@ def setup(c):
 
     y = step(5, "Bring your passwords over", y)
     y = p.text("Chrome: <font name='Mono' size='8.6'>chrome://password-manager/settings</font> → <b>Export passwords</b>. "
-               "Safari: File → Export → Passwords. Click the Safely icon → <b>Import passwords</b> and drop the file in. It is encrypted in the browser and "
+               "Safari: File → Export → Passwords. Click the Shlok icon → <b>Import passwords</b> and drop the file in. It is encrypted in the browser and "
                "travels through the key to the phone — 250 logins take well under a minute.", M + 28, y, left - 28) - 8
     p.card(M + 28, y - 50, left - 28, 50, fill=HexColor("#FFFBEB"), shadow=False)
     p.text("<b><font color='#B45309'>Nothing is deleted from Chrome.</font></b> Delete the .csv afterwards (it is plain text), and clear Chrome's saved "
-           "passwords yourself once you trust Safely.", M + 40, y - 9, left - 52, SMALL)
+           "passwords yourself once you trust Shlok.", M + 40, y - 9, left - 52, SMALL)
 
     iy = p.image("key.jpg", rx, p.y + 4, rw, radius=14)
     iy = p.text("The key: a XIAO ESP32C3 on USB power.", rx, iy - 5, rw, CENTER) - 14
@@ -461,9 +459,9 @@ def setup(c):
 def test_and_ship(c):
     p = Page(c, 5, "Test it, ship it, fix it", "From first fill to TestFlight")
     y = p.y
-    shots = [("ios-vault.jpg", "Vault", 603 / 1311), ("ios-devices.jpg", "Devices", 603 / 1311),
-             ("ios-activity.jpg", "Activity", 603 / 1311), ("ext-popup.jpg", "Chrome popup", 350 / 560)]
-    sh = 205
+    shots = [("ios-onboarding.jpg", "Welcome", 603 / 1311), ("ios-vault.jpg", "Vault", 603 / 1311),
+             ("ios-devices.jpg", "Devices", 603 / 1311), ("ios-lock.jpg", "Locked", 603 / 1311), ("ext-popup.jpg", "Chrome popup", 350 / 560)]
+    sh = 190
     widths = [sh * ratio for _, _, ratio in shots]
     gap = (W - 2 * M - sum(widths)) / (len(shots) - 1)
     x = M
@@ -479,12 +477,12 @@ def test_and_ship(c):
         ("First fill.", "Run <font name='Mono' size='8'>scripts/serve-test-page.sh</font>, add a login for <font name='Mono' size='8'>http://localhost:8765</font> in the app, open the page. The fields glow and fill."),
         ("Walk away.", "Carry the key out of the room. The popup turns to “Looking for key”; a reload fills nothing. Come back: “Ready” within seconds."),
         ("Ask every time.", "Settings → “Ask me every time”. Reload: the phone asks, Face ID approves. Try Deny as well."),
-        ("Save a new login.", "Type a login by hand on a site Safely does not know. A “Save this login to Safely?” card appears."),
-        ("Fill inside iPhone apps.", "iOS Settings → General → AutoFill &amp; Passwords → turn on Safely. Any app's login now offers your vault."),
+        ("Save a new login.", "Type a login by hand on a site Shlok does not know. A “Save this login to Shlok?” card appears."),
+        ("Fill inside iPhone apps.", "iOS Settings → General → AutoFill &amp; Passwords → turn on Shlok. Any app's login now offers your vault."),
     ]
     for i, (title, body) in enumerate(tests):
         p.badge(M, ly, str(i + 1), r=8)
-        ly = p.text(f"<b><font color='#0F172A'>{title}</font></b> {body}", M + 23, ly + 1, col - 23, SMALL) - 7
+        ly = p.text(f"<b><font color='#2B1A3F'>{title}</font></b> {body}", M + 23, ly + 1, col - 23, SMALL) - 7
 
     rx = M + col + 14
     ry = p.heading("No iPhone at hand?", rx, y, 12.5)
@@ -505,7 +503,7 @@ def test_and_ship(c):
     fixes = [
         ("“Helper missing”", "Run scripts/install-host.sh, then reload the extension."),
         ("“Looking for key”", "Is the key powered? System Settings → Privacy → Bluetooth → Chrome on."),
-        ("“Phone away”", "Open Safely once on the phone; iOS then keeps the link in the background."),
+        ("“Phone away”", "Open Shlok once on the phone; iOS then keeps the link in the background."),
         ("Nothing fills", "Does the site's address in the vault match? Check the phone's Activity tab."),
     ]
     p.card(M, y - 98, W - 2 * M, 98)
@@ -514,7 +512,7 @@ def test_and_ship(c):
     for i, (sym, fix) in enumerate(fixes):
         fx = M + 14 + (i % 2) * fw
         fy = y - 34 - (i // 2) * 30
-        p.text(f"<b><font color='#0F172A'>{sym}</font></b> — {fix}", fx, fy, fw - 10, SMALL)
+        p.text(f"<b><font color='#2B1A3F'>{sym}</font></b> — {fix}", fx, fy, fw - 10, SMALL)
     p.text("Helper log: <font name='Mono' size='8'>~/Library/Logs/Safely/host.log</font> &nbsp;·&nbsp; Key log: "
            "<font name='Mono' size='8'>arduino-cli monitor -p /dev/cu.usbmodem1101 -c baudrate=115200</font> &nbsp;·&nbsp; Protocol: docs/PROTOCOL.md",
            M, y - 106, W - 2 * M, CENTER)
@@ -523,8 +521,8 @@ def test_and_ship(c):
 
 def main():
     c = canvas.Canvas(str(OUT), pagesize=A4)
-    c.setTitle("Safely — how it works and how to test it")
-    c.setAuthor("Safely")
+    c.setTitle("Shlok — how it works and how to test it")
+    c.setAuthor("Shlok")
     for page in (cover, how_it_works, security, setup, test_and_ship):
         page(c)
     c.save()

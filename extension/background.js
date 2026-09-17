@@ -1,6 +1,6 @@
-// Safely service worker.
+// Shlok service worker.
 //
-//   content script / popup  ⇄  this worker  ⇄  native host (BLE pipe)  ⇄  Safely Key  ⇄  phone
+//   content script / popup  ⇄  this worker  ⇄  native host (BLE pipe)  ⇄  Shlok Key  ⇄  phone
 //
 // The worker owns the pairing (a non-extractable AES key in IndexedDB) and is the only place
 // where credentials are decrypted. It never writes a password to disk.

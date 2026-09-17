@@ -4,6 +4,14 @@ enum AppTab: String, CaseIterable {
     case vault, devices, activity, settings
 
     var title: String { rawValue.capitalized }
+    var gradient: LinearGradient {
+        switch self {
+        case .vault: return Theme.gradient
+        case .devices: return Theme.skyGradient
+        case .activity: return Theme.sunnyGradient
+        case .settings: return Theme.grapeGradient
+        }
+    }
     var symbol: String {
         switch self {
         case .vault: return "lock.shield.fill"
@@ -26,11 +34,23 @@ struct RootView: View {
         UserDefaults.standard.string(forKey: "SafelyTab").flatMap(AppTab.init(rawValue:)) ?? .vault
     }
 
+    /// `-SafelyScreen onboarding|lock|paired` shows one screen in demo mode (used for screenshots).
+    private static let demoScreen = AppModel.isDemo ? UserDefaults.standard.string(forKey: "SafelyScreen") : nil
+
     var body: some View {
         ZStack {
             AuroraBackground()
 
-            if !settings.onboarded && !AppModel.isDemo {
+            if Self.demoScreen == "onboarding" {
+                OnboardingView()
+            } else if Self.demoScreen == "lock" {
+                LockView()
+            } else if Self.demoScreen == "paired" {
+                VStack(spacing: 18) {
+                    SuccessBurst()
+                    Text("Paired").font(.rounded(28, .bold)).foregroundStyle(Theme.ink)
+                }
+            } else if !settings.onboarded && !AppModel.isDemo {
                 OnboardingView().transition(.opacity)
             } else {
                 content
@@ -42,7 +62,7 @@ struct RootView: View {
 
             // Hide the vault in the app switcher
             if scenePhase != .active && !model.isLocked {
-                Rectangle().fill(.ultraThinMaterial).ignoresSafeArea().overlay(ShieldMark(size: 72))
+                Rectangle().fill(.ultraThinMaterial).ignoresSafeArea().overlay(Mascot(size: 130))
             }
         }
         .sheet(item: $model.approval) { pending in
@@ -89,8 +109,8 @@ struct RootView: View {
                     .padding(.horizontal, tab == item ? 18 : 14)
                     .background {
                         if tab == item {
-                            Capsule().fill(Theme.gradient).matchedGeometryEffect(id: "tab", in: tabSpace)
-                                .shadow(color: Theme.indigo.opacity(0.35), radius: 10, y: 5)
+                            Capsule().fill(item.gradient).matchedGeometryEffect(id: "tab", in: tabSpace)
+                                .shadow(color: Theme.primaryDeep.opacity(0.28), radius: 10, y: 5)
                         }
                     }
                 }
@@ -100,7 +120,7 @@ struct RootView: View {
         }
         .padding(6)
         .background(.white.opacity(0.94), in: Capsule())
-        .shadow(color: Theme.indigoDeep.opacity(0.14), radius: 22, y: 10)
+        .shadow(color: Theme.primaryDeep.opacity(0.14), radius: 22, y: 10)
         .padding(.bottom, 6)
     }
 }
@@ -117,18 +137,16 @@ struct LockView: View {
                 ZStack {
                     ForEach(0..<3) { ring in
                         Circle()
-                            .stroke(Theme.indigo.opacity(0.18 - Double(ring) * 0.05), lineWidth: 1.5)
-                            .frame(width: 150 + CGFloat(ring) * 56, height: 150 + CGFloat(ring) * 56)
+                            .stroke([Theme.primary, Theme.tangerine, Theme.grape][ring].opacity(0.30 - Double(ring) * 0.07), lineWidth: 2)
+                            .frame(width: 230 + CGFloat(ring) * 56, height: 230 + CGFloat(ring) * 56)
                             .scaleEffect(breathe ? 1.06 : 0.94)
                             .animation(.easeInOut(duration: 2.4).repeatForever().delay(Double(ring) * 0.25), value: breathe)
                     }
-                    ShieldMark(size: 104, locked: true)
-                        .scaleEffect(breathe ? 1.03 : 0.97)
-                        .animation(.easeInOut(duration: 2.4).repeatForever(), value: breathe)
+                    BouncyMascot(size: 190)
                 }
                 VStack(spacing: 6) {
-                    Text("Safely").font(.rounded(34, .bold)).foregroundStyle(Theme.ink)
-                    Text("Your vault is locked").font(.rounded(16, .medium)).foregroundStyle(Theme.muted)
+                    Text("Shlok").font(.rounded(34, .bold)).foregroundStyle(Theme.ink)
+                    Text("Shh… your vault is locked").font(.rounded(16, .medium)).foregroundStyle(Theme.muted)
                 }
                 Spacer()
                 Button {

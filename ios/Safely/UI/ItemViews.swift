@@ -177,7 +177,7 @@ struct ItemDetailView: View {
     }
 
     private func copyButton(_ what: String, perform: @escaping () -> Void) -> some View {
-        iconButton(copied == what ? "checkmark" : "doc.on.doc.fill", tint: copied == what ? Theme.green : Theme.indigo) {
+        iconButton(copied == what ? "checkmark" : "doc.on.doc.fill", tint: copied == what ? Theme.green : Theme.primary) {
             perform()
             withAnimation(Theme.spring) { copied = what }
             Task {
@@ -188,7 +188,7 @@ struct ItemDetailView: View {
         .sensoryFeedback(.success, trigger: copied)
     }
 
-    private func iconButton(_ symbol: String, tint: Color = Theme.indigo, action: @escaping () -> Void) -> some View {
+    private func iconButton(_ symbol: String, tint: Color = Theme.primary, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .bold))
@@ -252,7 +252,7 @@ struct ItemEditor: View {
                                     .font(.system(size: 17, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: 42, height: 42)
-                                    .background(Theme.gradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .background(Theme.grapeGradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                                     .rotationEffect(.degrees(spin))
                             }
                             .sensoryFeedback(.impact, trigger: spin)

@@ -22,7 +22,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleVersion</key><string>1</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>LSUIElement</key><true/>
-  <key>NSBluetoothAlwaysUsageDescription</key><string>Safely talks to your Safely Key over Bluetooth.</string>
+  <key>NSBluetoothAlwaysUsageDescription</key><string>Shlok talks to your Shlok Key over Bluetooth.</string>
 </dict></plist>
 PLIST
 codesign --force --sign - "$APP" >/dev/null 2>&1

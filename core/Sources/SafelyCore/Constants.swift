@@ -2,7 +2,7 @@ import Foundation
 
 /// GATT layout of the Safely Key. Must match firmware/safely_key/safely_key.ino.
 public enum SafelyBLE {
-    public static let deviceName = "Safely Key"
+    public static let deviceName = "Shlok Key"
     public static let service = "5AFE0001-7A3C-4B1E-9D2F-C0DE5AFE1A00"
     public static let phoneRx = "5AFE0002-7A3C-4B1E-9D2F-C0DE5AFE1A00"
     public static let phoneTx = "5AFE0003-7A3C-4B1E-9D2F-C0DE5AFE1A00"

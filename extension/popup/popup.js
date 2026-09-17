@@ -28,11 +28,11 @@ function render(status) {
   } else if (!status.key) {
     pill.className = 'pill warn';
     pill.textContent = 'Looking for key';
-    hint = 'Bring your Safely Key close. It connects on its own.';
+    hint = 'Bring your Shlok Key close. It connects on its own.';
   } else if (!status.phone) {
     pill.className = 'pill warn';
     pill.textContent = 'Phone away';
-    hint = 'Key found. Waiting for your phone to join — open Safely once if it does not.';
+    hint = 'Key found. Waiting for your phone to join — open Shlok once if it does not.';
   } else if (!status.paired) {
     pill.className = 'pill warn';
     pill.textContent = 'Not paired';
@@ -74,7 +74,7 @@ async function lookUpSite() {
     const messages = {
       none: 'No login saved for this site yet.',
       denied: 'Declined on your phone.',
-      locked: 'Unlock Safely on your phone first.',
+      locked: 'Unlock Shlok on your phone first.',
       timeout: 'Your phone did not answer.',
       busy: 'Too many requests — try again in a minute.',
     };

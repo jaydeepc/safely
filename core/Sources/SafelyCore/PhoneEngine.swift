@@ -99,7 +99,7 @@ public final class PhoneEngine {
         case Message.Kind.pairCommit:
             guard pairingWindowOpen, let commit = message.commit.flatMap({ Data(base64Encoded: $0) }), commit.count == 32 else {
                 var cancel = Message(t: Message.Kind.pairCancel)
-                cancel.reason = "Open Safely on your phone and tap “Pair a browser” first."
+                cancel.reason = "Open Shlok on your phone and tap “Pair a browser” first."
                 send?(cancel.plainEnvelope())
                 return
             }

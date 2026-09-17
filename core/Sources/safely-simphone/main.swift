@@ -66,7 +66,7 @@ final class SimStore: PairingStore {
 final class SimPhone: PhoneEngineDelegate {
     var vault: [VaultItem] = [
         VaultItem(title: "GitHub", url: "https://github.com/login", username: "demo@safely.test", password: "demo-Gh-7431!"),
-        VaultItem(title: "Safely test page", url: "http://localhost:8765/", username: "tester", password: "demo-Local-2290!"),
+        VaultItem(title: "Shlok test page", url: "http://localhost:8765/", username: "tester", password: "demo-Local-2290!"),
         VaultItem(title: "Example", url: "https://example.com", username: "alice", password: "demo-Ex-5512!"),
         VaultItem(title: "Example (work)", url: "https://login.example.com", username: "alice@work", password: "demo-Ex-9983!"),
     ]

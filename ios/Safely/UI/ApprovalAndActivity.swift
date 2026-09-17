@@ -14,7 +14,7 @@ struct ApprovalSheet: View {
             AuroraBackground()
             VStack(spacing: 16) {
                 ZStack {
-                    Circle().stroke(Theme.indigo.opacity(0.3), lineWidth: 2).frame(width: 84, height: 84)
+                    Circle().stroke(Theme.primary.opacity(0.3), lineWidth: 2).frame(width: 84, height: 84)
                         .scaleEffect(pulse ? 1.7 : 1).opacity(pulse ? 0 : 1)
                         .animation(.easeOut(duration: 1.6).repeatForever(autoreverses: false), value: pulse)
                     Avatar(text: pending.matches.first?.title ?? site, size: 84)
@@ -27,7 +27,7 @@ struct ApprovalSheet: View {
                 }
 
                 HStack(spacing: 10) {
-                    Image(systemName: "person.crop.circle.fill").foregroundStyle(Theme.indigo)
+                    Image(systemName: "person.crop.circle.fill").foregroundStyle(Theme.primary)
                     Text(pending.matches.count == 1 ? pending.matches[0].username : "\(pending.matches.count) matching logins")
                         .font(.rounded(15)).foregroundStyle(Theme.ink).lineLimit(1)
                 }
@@ -99,8 +99,8 @@ private struct ActivityRow: View {
         case .filled: return ("bolt.fill", Theme.green, "Filled")
         case .offered: return ("hand.raised.fill", Theme.amber, "Asked")
         case .denied: return ("xmark", Theme.rose, "Denied")
-        case .saved: return ("tray.and.arrow.down.fill", Theme.indigo, "Saved")
-        case .imported: return ("square.and.arrow.down.on.square.fill", Theme.indigo, "Imported")
+        case .saved: return ("tray.and.arrow.down.fill", Theme.primary, "Saved")
+        case .imported: return ("square.and.arrow.down.on.square.fill", Theme.primary, "Imported")
         case .paired: return ("link", Theme.mint, "Paired")
         case .unpaired: return ("link.badge.plus", Theme.muted, "Unpaired")
         case .nothingFound: return ("questionmark", Theme.muted, "No login for")

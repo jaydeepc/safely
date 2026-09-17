@@ -1,10 +1,12 @@
-# Safely
+# Shlok
+
+<img src="design/mascot.png" width="120" align="right" alt="Shlok mascot">
 
 Your passwords live on your phone. A small Bluetooth key in your pocket lets your browser borrow one
 for a moment — and only while you are there.
 
 ```
- Chrome extension ⇄ Bluetooth helper ⇄  Safely Key  ⇄  Safely iOS app
+ Chrome extension ⇄ Bluetooth helper ⇄  Shlok Key  ⇄  Shlok iOS app
   (fills the form)   (native host)     (XIAO ESP32C3)   (encrypted vault)
         └──────────── end-to-end encrypted: ECDH P-256 + AES-256-GCM ───────────┘
 ```
@@ -19,7 +21,8 @@ browser can fill nothing.
 | `ios/` | SwiftUI app + Password AutoFill extension (`Safely.xcodeproj`) |
 | `extension/` | Chrome extension (Manifest V3) |
 | `scripts/` | Installer, tests, TestFlight build |
-| `docs/` | `PROTOCOL.md` and the illustrated guide `Safely-Guide.pdf` |
+| `docs/` | `PROTOCOL.md` and the illustrated guide `Shlok-Guide.pdf` |
+| `design/` | Mascot and illustration source art (generated with GPT Image on Higgsfield) |
 
 ## Quick start
 
@@ -43,7 +46,7 @@ The setup page opens by itself. If macOS asks whether Chrome may use Bluetooth, 
 **3 · Phone** — open `ios/Safely.xcodeproj`, select your iPhone, Run. For TestFlight see below.
 In the app: **Devices → Pair a browser**, then **Start pairing** on the Chrome setup page and compare the six digits.
 
-**4 · Passwords** — Chrome → `chrome://password-manager/settings` → **Export passwords**, then Safely toolbar
+**4 · Passwords** — Chrome → `chrome://password-manager/settings` → **Export passwords**, then Shlok toolbar
 icon → **Import passwords** and drop the CSV. It is encrypted in the browser and sent through the key to the phone.
 Nothing is removed from Chrome; delete the CSV afterwards. (The app can also import the CSV directly: Settings → Import.)
 
@@ -78,6 +81,9 @@ scripts/testflight.sh --upload   # → straight to App Store Connect
 
 One-time: sign in to Xcode (Settings → Accounts) and create the app record in App Store Connect with bundle ID
 `com.codecrackjd.safely`. The script header explains how to change the bundle ID.
+
+> **Naming:** the product is called **Shlok**. Code identifiers, the bundle ID (`com.codecrackjd.safely`), the native-host ID and folder
+> names still say *safely* on purpose — only what people see was renamed.
 
 ## Security model
 

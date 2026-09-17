@@ -1,4 +1,4 @@
-// Browser side of the Safely protocol: pairing state machine and sealed request/response.
+// Browser side of the Shlok protocol: pairing state machine and sealed request/response.
 // Transport and storage are injected, so the service worker and the Node end-to-end test share it.
 
 import * as P from './protocol.js';
@@ -129,10 +129,10 @@ export class BrowserEngine {
       stage: 'waiting-phone',
       userConfirmed: false,
       phoneConfirmed: false,
-      timer: setTimeout(() => this.#failPairing('The phone did not answer. Is Safely open on “Pair a browser”?'), 60000),
+      timer: setTimeout(() => this.#failPairing('The phone did not answer. Is Shlok open on “Pair a browser”?'), 60000),
     };
     const sent = this.io.send(P.plainEnvelope({ t: 'pair_commit', commit: P.toBase64(keys.commit), name: browserName }));
-    if (!sent) this.#failPairing('Your Safely Key is not connected.');
+    if (!sent) this.#failPairing('Your Shlok Key is not connected.');
   }
 
   confirmPairing() {

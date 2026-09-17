@@ -44,22 +44,22 @@ struct SettingsView: View {
                 }
 
                 section("SECURITY", index: 2) {
-                    toggle("Lock with Face ID", "Ask when the app opens and after 45 s away", symbol: "faceid", isOn: $settings.appLock)
+                    toggle("Lock with Face ID", "Ask when the app opens and after 45 s away", symbol: "faceid", tint: Theme.grape, isOn: $settings.appLock)
                     Divider()
-                    toggle("Tell me about every fill", "A quiet notification while the app is closed", symbol: "bell.badge.fill", isOn: $settings.notifyOnFill)
+                    toggle("Tell me about every fill", "A quiet notification while the app is closed", symbol: "bell.badge.fill", tint: Theme.tangerine, isOn: $settings.notifyOnFill)
                         .onChange(of: settings.notifyOnFill) { _, on in if on { model.requestNotificationPermission() } }
                 }
 
                 section("YOUR PASSWORDS", index: 3) {
-                    action("Import from Chrome or Safari", "Pick the exported .csv file", symbol: "square.and.arrow.down.fill") { importing = true }
+                    action("Import from Chrome or Safari", "Pick the exported .csv file", symbol: "square.and.arrow.down.fill", tint: Theme.sky) { importing = true }
                     Divider()
-                    action("Export a backup", "A plain .csv — store it somewhere safe", symbol: "square.and.arrow.up.fill") {
+                    action("Export a backup", "A plain .csv — store it somewhere safe", symbol: "square.and.arrow.up.fill", tint: Theme.green) {
                         Task {
                             if await model.authenticate("Export every password") { exportFile = ExportedCSV(text: model.exportCSV()) }
                         }
                     }
                     Divider()
-                    action("Fill in apps and Safari", "Settings → General → AutoFill & Passwords → Safely", symbol: "rectangle.and.pencil.and.ellipsis") {
+                    action("Fill in apps and Safari", "Settings → General → AutoFill & Passwords → Shlok", symbol: "rectangle.and.pencil.and.ellipsis", tint: Theme.pink) {
                         if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                     }
                 }
@@ -70,7 +70,7 @@ struct SettingsView: View {
                     action("Clear activity", "Forget the history shown on the Activity tab", symbol: "clock.arrow.circlepath", tint: Theme.rose) { activity.clear() }
                 }
 
-                Text("Safely 1.0 · Passwords are encrypted with AES-256 and the key never leaves this iPhone. The Safely Key only relays sealed messages.")
+                Text("Shlok 1.0 · Passwords are encrypted with AES-256 and the key never leaves this iPhone. The Shlok Key only relays sealed messages.")
                     .font(.rounded(12, .medium)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity).padding(.top, 6)
                     .staggered(5, shown: shown)
@@ -88,7 +88,7 @@ struct SettingsView: View {
             withAnimation(Theme.spring) { importResult = model.importCSV(text) }
         }
         .fileExporter(isPresented: .init(get: { exportFile != nil }, set: { if !$0 { exportFile = nil } }),
-                      document: exportFile, contentType: .commaSeparatedText, defaultFilename: "Safely backup") { _ in exportFile = nil }
+                      document: exportFile, contentType: .commaSeparatedText, defaultFilename: "Shlok backup") { _ in exportFile = nil }
         .alert("Import finished", isPresented: .init(get: { importResult != nil }, set: { if !$0 { importResult = nil } })) {
             Button("OK") {}
         } message: {
@@ -111,20 +111,20 @@ struct SettingsView: View {
         .staggered(index, shown: shown)
     }
 
-    private func toggle(_ title: String, _ detail: String, symbol: String, isOn: Binding<Bool>) -> some View {
+    private func toggle(_ title: String, _ detail: String, symbol: String, tint: Color, isOn: Binding<Bool>) -> some View {
         Toggle(isOn: isOn) {
             HStack(spacing: 12) {
-                icon(symbol, tint: Theme.indigo)
+                icon(symbol, tint: tint)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.rounded(16)).foregroundStyle(Theme.ink)
                     Text(detail).font(.rounded(13, .medium)).foregroundStyle(Theme.muted)
                 }
             }
         }
-        .tint(Theme.indigo)
+        .tint(tint)
     }
 
-    private func action(_ title: String, _ detail: String, symbol: String, tint: Color = Theme.indigo, perform: @escaping () -> Void) -> some View {
+    private func action(_ title: String, _ detail: String, symbol: String, tint: Color = Theme.primary, perform: @escaping () -> Void) -> some View {
         Button(action: perform) {
             HStack(spacing: 12) {
                 icon(symbol, tint: tint)
@@ -169,10 +169,10 @@ struct OnboardingView: View {
     @State private var page = 0
     @State private var shown = false
 
-    private let pages: [(String, String, String)] = [
-        ("lock.shield.fill", "Your passwords,\nonly on your phone", "Not in Chrome. Not in a cloud. Encrypted on this iPhone and nowhere else."),
-        ("key.horizontal.fill", "A key in your pocket", "Your Safely Key links this phone to your browser over Bluetooth. It carries sealed messages and can read none of them."),
-        ("bolt.fill", "Walk up. It fills.\nWalk away. It's gone.", "Open a login page with your key nearby and the form fills itself. Leave, and the browser knows nothing."),
+    private let pages: [(Mascot.Pose, String, String)] = [
+        (.phone, "Your passwords,\nonly on your phone", "Not in Chrome. Not in a cloud. Encrypted on this iPhone and nowhere else."),
+        (.key, "A key in your pocket", "Your Shlok Key links this phone to your browser over Bluetooth. It carries sealed messages and can read none of them."),
+        (.magic, "Walk up. It fills.\nWalk away. It's gone.", "Open a login page with your key nearby and the form fills itself. Leave, and the browser knows nothing."),
     ]
 
     var body: some View {
@@ -181,14 +181,8 @@ struct OnboardingView: View {
                 ForEach(pages.indices, id: \.self) { index in
                     VStack(spacing: 22) {
                         Spacer()
-                        Image(systemName: pages[index].0)
-                            .font(.system(size: 54, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 132, height: 132)
-                            .background(Theme.gradient, in: RoundedRectangle(cornerRadius: 42, style: .continuous))
-                            .shadow(color: Theme.indigo.opacity(0.35), radius: 26, y: 14)
-                            .symbolEffect(.bounce, value: page)
-                            .scaleEffect(page == index && shown ? 1 : 0.7)
+                        BouncyMascot(pose: pages[index].0, size: 250)
+                            .scaleEffect(page == index && shown ? 1 : 0.6)
                             .animation(.spring(response: 0.6, dampingFraction: 0.6), value: page)
                         Text(pages[index].1).font(.rounded(30, .bold)).foregroundStyle(Theme.ink).multilineTextAlignment(.center)
                         Text(pages[index].2).font(.rounded(16, .medium)).foregroundStyle(Theme.muted).multilineTextAlignment(.center).padding(.horizontal, 12)

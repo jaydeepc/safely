@@ -202,7 +202,7 @@ extension RelayLink: CBCentralManagerDelegate {
 extension RelayLink: CBPeripheralDelegate {
     public func peripheral(_ p: CBPeripheral, didDiscoverServices error: Error?) {
         guard let service = p.services?.first(where: { $0.uuid == serviceUUID }) else {
-            log("service missing: \(error?.localizedDescription ?? "not a Safely Key")")
+            log("service missing: \(error?.localizedDescription ?? "not a Shlok Key")")
             central.cancelPeripheralConnection(p)
             return
         }

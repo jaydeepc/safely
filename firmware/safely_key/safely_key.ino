@@ -1,10 +1,10 @@
 /*
- * Safely Key — firmware for the Seeed Studio XIAO ESP32C3
+ * Shlok Key — firmware for the Seeed Studio XIAO ESP32C3
  *
  * The key is a BLE *relay*. Two kinds of centrals connect to it at the same time:
  *
- *   - the PHONE   (Safely iOS app, holds the vault)
- *   - a BROWSER   (Safely native host on the computer, on behalf of the Chrome extension)
+ *   - the PHONE   (Shlok iOS app, holds the vault)
+ *   - a BROWSER   (Shlok native host on the computer, on behalf of the Chrome extension)
  *
  * Roles are defined by which characteristics a central uses, not by the connection:
  *
@@ -21,8 +21,8 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 
-#define FW_VERSION "1.0.0"
-#define DEVICE_NAME "Safely Key"
+#define FW_VERSION "1.1.0"
+#define DEVICE_NAME "Shlok Key"
 
 #define UUID_SERVICE    "5afe0001-7a3c-4b1e-9d2f-c0de5afe1a00"
 #define UUID_PHONE_RX   "5afe0002-7a3c-4b1e-9d2f-c0de5afe1a00"  // phone   -> key   (write)
@@ -184,7 +184,7 @@ static void relay(const Frame& f) {
 void setup() {
   Serial.begin(115200);
   delay(300);
-  Serial.printf("\nSafely Key firmware %s\n", FW_VERSION);
+  Serial.printf("\nShlok Key firmware %s\n", FW_VERSION);
 
   frameQueue = xQueueCreate(QUEUE_DEPTH, sizeof(Frame));
 

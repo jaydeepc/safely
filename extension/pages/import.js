@@ -44,8 +44,8 @@ async function load(file) {
   $('send').disabled = !status.ready;
   if (!status.ready) {
     $('link-warning').textContent = status.paired
-      ? 'Your phone is not reachable right now. Bring the key and phone close and open Safely on the phone.'
-      : 'This browser is not paired yet — pair it first from the Safely toolbar icon.';
+      ? 'Your phone is not reachable right now. Bring the key and phone close and open Shlok on the phone.'
+      : 'This browser is not paired yet — pair it first from the Shlok toolbar icon.';
   }
 }
 

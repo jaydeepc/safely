@@ -1,5 +1,5 @@
-// Safely content script: finds login forms, asks the service worker for credentials (which asks the
-// phone through the Safely Key), fills them, and offers to save logins that were typed by hand.
+// Shlok content script: finds login forms, asks the service worker for credentials (which asks the
+// phone through the Shlok Key), fills them, and offers to save logins that were typed by hand.
 // All UI lives in a closed shadow root so pages cannot read or restyle it.
 
 (() => {
@@ -79,7 +79,7 @@
     el.dispatchEvent(new Event('change', { bubbles: true }));
     const previous = { boxShadow: el.style.boxShadow, transition: el.style.transition };
     el.style.transition = 'box-shadow .35s ease';
-    el.style.boxShadow = '0 0 0 3px rgba(99,102,241,.35), 0 0 18px rgba(45,212,191,.35)';
+    el.style.boxShadow = '0 0 0 3px rgba(255,79,121,.35), 0 0 18px rgba(255,154,61,.35)';
     setTimeout(() => {
       el.style.boxShadow = previous.boxShadow;
       setTimeout(() => (el.style.transition = previous.transition), 400);
@@ -92,7 +92,7 @@
     if (target.username && item.username) setValue(target.username, item.username);
     if (target.password) setValue(target.password, item.password);
     hideChooser();
-    if (announce) toast('Filled by Safely', item.username || item.title);
+    if (announce) toast('Filled by Shlok', item.username || item.title);
     return true;
   }
 
@@ -142,13 +142,14 @@
 
   function shield() {
     return svg('svg', { viewBox: '0 0 24 24', fill: 'none' },
-      svg('path', { d: 'M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z', fill: 'url(#safely-g)' }),
-      svg('circle', { cx: 12, cy: 10.6, r: 2.1, fill: '#fff' }),
-      svg('path', { d: 'M11.1 12h1.8l.5 3.6h-2.8l.5-3.6Z', fill: '#fff' }),
+      svg('path', { d: 'M8 10.5V7.6a4 4 0 0 1 8 0v2.9', stroke: '#FFCC33', 'stroke-width': 2.6, 'stroke-linecap': 'round' }),
+      svg('rect', { x: 4.5, y: 9.6, width: 15, height: 12, rx: 4.2, fill: 'url(#shlok-g)' }),
+      svg('circle', { cx: 12, cy: 14.4, r: 1.7, fill: '#5B2FD6' }),
+      svg('path', { d: 'M11.2 15.3h1.6l.5 3.1h-2.6l.5-3.1Z', fill: '#5B2FD6' }),
       svg('defs', {},
-        svg('linearGradient', { id: 'safely-g', x1: 4, y1: 2, x2: 20, y2: 22 },
-          svg('stop', { 'stop-color': '#6366F1' }),
-          svg('stop', { offset: 1, 'stop-color': '#2DD4BF' }))));
+        svg('linearGradient', { id: 'shlok-g', x1: 4, y1: 9, x2: 20, y2: 22 },
+          svg('stop', { 'stop-color': '#FF4F79' }),
+          svg('stop', { offset: 1, 'stop-color': '#FF9A3D' }))));
   }
 
   function tick() {
@@ -160,50 +161,52 @@
     :host { all: initial; }
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
     .badge { position: fixed; z-index: 2147483646; width: 26px; height: 26px; padding: 3px; border: 0; border-radius: 9px; cursor: pointer;
-      background: #fff; box-shadow: 0 2px 10px rgba(30,41,59,.18), 0 0 0 1px rgba(99,102,241,.18);
+      background: #fff; box-shadow: 0 2px 10px rgba(43,26,63,.18), 0 0 0 1px rgba(255,79,121,.18);
       transition: transform .18s cubic-bezier(.34,1.56,.64,1), opacity .18s; animation: pop .28s cubic-bezier(.34,1.56,.64,1); }
     .badge:hover { transform: scale(1.12); }
     .badge svg { width: 100%; height: 100%; display: block; }
     .badge.asking { animation: pulse 1.1s ease-in-out infinite; }
     .badge.off { filter: grayscale(1); opacity: .75; }
     .badge .count { position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px;
-      background: #6366F1; color: #fff; font-size: 10px; font-weight: 700; line-height: 15px; text-align: center; }
+      background: #FF4F79; color: #fff; font-size: 10px; font-weight: 700; line-height: 15px; text-align: center; }
     .card { position: fixed; z-index: 2147483647; width: 300px; max-width: calc(100vw - 24px); padding: 8px; border-radius: 16px; background: rgba(255,255,255,.97);
-      backdrop-filter: blur(14px); box-shadow: 0 18px 50px rgba(30,41,59,.22), 0 0 0 1px rgba(99,102,241,.14); color: #0F172A;
+      backdrop-filter: blur(14px); box-shadow: 0 18px 50px rgba(43,26,63,.22), 0 0 0 1px rgba(255,79,121,.14); color: #2B1A3F;
       animation: rise .22s cubic-bezier(.2,.9,.3,1.2); }
-    .head { display: flex; align-items: center; gap: 8px; padding: 6px 8px 8px; font-size: 12px; font-weight: 600; color: #64748B; letter-spacing: .02em; }
+    .head { display: flex; align-items: center; gap: 8px; padding: 6px 8px 8px; font-size: 12px; font-weight: 600; color: #80708F; letter-spacing: .02em; }
     .head svg { width: 16px; height: 16px; }
     .row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 8px; border: 0; border-radius: 11px; background: transparent; cursor: pointer; text-align: left;
       transition: background .15s, transform .15s; animation: rise .3s both; }
-    .row:hover, .row:focus-visible { background: #EEF2FF; transform: translateX(2px); outline: none; }
+    .row:hover, .row:focus-visible { background: #FFF0E8; transform: translateX(2px); outline: none; }
     .avatar { flex: none; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px;
-      background: linear-gradient(135deg, #6366F1, #2DD4BF); }
+      background: linear-gradient(135deg, #FF4F79, #FF9A3D); }
+    .row:nth-of-type(3n+2) .avatar { background: linear-gradient(135deg, #7C4DFF, #FF5CA8); }
+    .row:nth-of-type(3n) .avatar { background: linear-gradient(135deg, #33ADFF, #19D3A2); }
     .who { min-width: 0; }
-    .who b { display: block; font-size: 13.5px; font-weight: 600; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .who span { display: block; font-size: 12px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .note { padding: 8px 10px 10px; font-size: 13px; line-height: 1.45; color: #475569; }
-    .note b { color: #0F172A; }
+    .who b { display: block; font-size: 13.5px; font-weight: 600; color: #2B1A3F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .who span { display: block; font-size: 12px; color: #80708F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .note { padding: 8px 10px 10px; font-size: 13px; line-height: 1.45; color: #6B5A7D; }
+    .note b { color: #2B1A3F; }
     .toast { position: fixed; z-index: 2147483647; right: 20px; bottom: 20px; display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 10px; border-radius: 999px;
-      background: #fff; color: #0F172A; font-size: 13px; box-shadow: 0 12px 36px rgba(30,41,59,.2), 0 0 0 1px rgba(45,212,191,.35);
+      background: #fff; color: #2B1A3F; font-size: 13px; box-shadow: 0 12px 36px rgba(43,26,63,.2), 0 0 0 1px rgba(255,154,61,.35);
       animation: slide .4s cubic-bezier(.2,.9,.3,1.2), fade .35s 2.4s forwards; }
-    .toast .tick { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #34D399, #2DD4BF); display: grid; place-items: center; }
+    .toast .tick { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #19D3A2, #33ADFF); display: grid; place-items: center; }
     .toast .tick svg { width: 14px; height: 14px; stroke-dasharray: 20; stroke-dashoffset: 20; animation: draw .4s .2s forwards; }
-    .toast small { display: block; color: #64748B; font-size: 11.5px; }
+    .toast small { display: block; color: #80708F; font-size: 11.5px; }
     .save { top: 16px; right: 16px; width: 320px; padding: 14px; }
     .save h4 { margin: 0 0 2px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
     .save h4 svg { width: 20px; height: 20px; }
-    .save p { margin: 0 0 12px 28px; font-size: 12.5px; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .save p { margin: 0 0 12px 28px; font-size: 12.5px; color: #80708F; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .actions { display: flex; gap: 8px; justify-content: flex-end; }
     .btn { border: 0; border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; transition: transform .15s, box-shadow .15s; }
     .btn:active { transform: scale(.96); }
-    .btn.primary { color: #fff; background: linear-gradient(135deg, #6366F1, #4F46E5); box-shadow: 0 6px 16px rgba(99,102,241,.35); }
-    .btn.ghost { color: #475569; background: #F1F5F9; }
+    .btn.primary { color: #fff; background: linear-gradient(135deg, #FF4F79, #EE3366); box-shadow: 0 6px 16px rgba(255,79,121,.35); }
+    .btn.ghost { color: #6B5A7D; background: #F8ECEE; }
     @keyframes pop { from { transform: scale(0); opacity: 0; } }
     @keyframes rise { from { transform: translateY(8px); opacity: 0; } }
     @keyframes slide { from { transform: translateY(24px) scale(.9); opacity: 0; } }
     @keyframes fade { to { opacity: 0; transform: translateY(10px); } }
     @keyframes draw { to { stroke-dashoffset: 0; } }
-    @keyframes pulse { 50% { transform: scale(1.14); box-shadow: 0 2px 14px rgba(99,102,241,.5), 0 0 0 5px rgba(99,102,241,.12); } }
+    @keyframes pulse { 50% { transform: scale(1.14); box-shadow: 0 2px 14px rgba(255,79,121,.5), 0 0 0 5px rgba(255,79,121,.12); } }
     @media (prefers-reduced-motion: reduce) { * { animation-duration: .01s !important; transition: none !important; } }
   `;
 
@@ -252,7 +255,7 @@
     if (!badge) {
       badge = el('button', 'badge');
       badge.type = 'button';
-      badge.title = 'Safely';
+      badge.title = 'Shlok';
       badge.addEventListener('mousedown', (event) => event.preventDefault()); // keep focus in the field
       badge.addEventListener('click', () => {
         if (chooser) hideChooser();
@@ -268,14 +271,14 @@
   }
 
   const NOTES = {
-    none: ['No saved login for this site.', 'Sign in once and Safely will offer to keep it on your phone.'],
-    offline: ['Your phone is not in reach.', 'Keep your Safely Key nearby and Bluetooth on — it reconnects on its own.'],
-    'not-paired': ['Not paired yet.', 'Click the Safely icon in the toolbar and pair this browser with your phone.'],
+    none: ['No saved login for this site.', 'Sign in once and Shlok will offer to keep it on your phone.'],
+    offline: ['Your phone is not in reach.', 'Keep your Shlok Key nearby and Bluetooth on — it reconnects on its own.'],
+    'not-paired': ['Not paired yet.', 'Click the Shlok icon in the toolbar and pair this browser with your phone.'],
     denied: ['Declined on your phone.', ''],
-    locked: ['Safely is locked.', 'Unlock the app on your phone, then try again.'],
-    timeout: ['No answer from your phone.', 'Open Safely on your phone and try again.'],
+    locked: ['Shlok is locked.', 'Unlock the app on your phone, then try again.'],
+    timeout: ['No answer from your phone.', 'Open Shlok on your phone and try again.'],
     busy: ['Too many requests.', 'Try again in a minute.'],
-    unsupported: ['Safely only fills on web pages.', ''],
+    unsupported: ['Shlok only fills on web pages.', ''],
     asking: ['Asking your phone…', ''],
   };
 
@@ -284,7 +287,7 @@
     const anchor = activeField?.isConnected ? activeField : loginTarget()?.password || loginTarget()?.username;
     if (!anchor) return;
     chooser = el('div', 'card');
-    chooser.append(el('div', 'head', shield(), text('span', `SAFELY · ${location.hostname}`)));
+    chooser.append(el('div', 'head', shield(), text('span', `SHLOK · ${location.hostname}`)));
     if (phase === 'ok' && items?.length) {
       items.forEach((item, index) => {
         const row = el('button', 'row');
@@ -333,7 +336,7 @@
   function showSavePrompt(offer) {
     if (saveCard || (!isTop && (innerWidth < 340 || innerHeight < 160))) return;
     saveCard = el('div', 'card save');
-    const title = el('h4', '', shield(), text('span', 'Save this login to Safely?'));
+    const title = el('h4', '', shield(), text('span', 'Save this login to Shlok?'));
     const who = text('p', `${offer.username || '(no username)'} · ${offer.host}`);
     const actions = el('div', 'actions');
     const later = text('button', 'Not now');

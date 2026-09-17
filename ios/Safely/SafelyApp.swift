@@ -14,7 +14,7 @@ struct SafelyApp: App {
                 .environmentObject(model.activity)
                 .environmentObject(model.settings)
                 .preferredColorScheme(.light)
-                .tint(Theme.indigo)
+                .tint(Theme.primary)
                 .onChange(of: scenePhase) { _, phase in model.scenePhaseChanged(phase) }
         }
     }

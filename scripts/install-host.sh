@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the Safely Bluetooth helper and registers it with Chrome (and Brave / Edge / Chromium if present)
+# Builds the Shlok Bluetooth helper and registers it with Chrome (and Brave / Edge / Chromium if present)
 # as the native messaging host "app.safely.host". Run again after pulling new code. Undo: scripts/install-host.sh --uninstall
 set -euo pipefail
 
@@ -18,7 +18,7 @@ BROWSERS=(
 if [[ "${1:-}" == "--uninstall" ]]; then
   for dir in "${BROWSERS[@]}"; do rm -f "$dir/NativeMessagingHosts/$HOST_NAME.json"; done
   rm -f "$INSTALL_DIR/safely-host"
-  echo "Safely helper removed."
+  echo "Shlok helper removed."
   exit 0
 fi
 
@@ -36,7 +36,7 @@ for dir in "${BROWSERS[@]}"; do
   cat > "$dir/NativeMessagingHosts/$HOST_NAME.json" <<JSON
 {
   "name": "$HOST_NAME",
-  "description": "Safely Bluetooth helper — relays encrypted messages to the Safely Key",
+  "description": "Shlok Bluetooth helper — relays encrypted messages to the Shlok Key",
   "path": "$INSTALL_DIR/safely-host",
   "type": "stdio",
   "allowed_origins": ["chrome-extension://$EXTENSION_ID/"]
@@ -50,6 +50,6 @@ cat <<DONE
 Done. Next:
   1. Chrome → chrome://extensions → enable Developer mode → "Load unpacked" → choose: $ROOT/extension
   2. If macOS asks whether Chrome may use Bluetooth, allow it.
-  3. The Safely setup page opens and walks you through pairing.
+  3. The Shlok setup page opens and walks you through pairing.
 Helper log: ~/Library/Logs/Safely/host.log
 DONE

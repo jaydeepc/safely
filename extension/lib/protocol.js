@@ -1,4 +1,4 @@
-// Safely wire protocol — browser side. Mirrors core/Sources/SafelyCore/{Crypto,Messages}.swift.
+// Shlok wire protocol — browser side. Mirrors core/Sources/SafelyCore/{Crypto,Messages}.swift.
 // Uses only WebCrypto, so it runs unchanged in the service worker and in Node (scripts/e2e-test.mjs).
 
 const subtle = globalThis.crypto.subtle;

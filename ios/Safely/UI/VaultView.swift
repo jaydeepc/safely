@@ -59,13 +59,14 @@ struct VaultView: View {
                     .contentTransition(.numericText())
             }
             Spacer()
+            BouncyMascot(size: 58)
             Button { adding = true } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
-                    .background(Theme.gradient, in: Circle())
-                    .shadow(color: Theme.indigo.opacity(0.35), radius: 10, y: 5)
+                    .background(Theme.grapeGradient, in: Circle())
+                    .shadow(color: Theme.grape.opacity(0.35), radius: 10, y: 5)
             }
             .buttonStyle(PressableRowStyle())
         }
@@ -108,10 +109,7 @@ struct VaultView: View {
 
     private var emptyState: some View {
         VStack(spacing: 14) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 40))
-                .foregroundStyle(Theme.gradient)
-                .symbolEffect(.pulse)
+            BouncyMascot(pose: .empty, size: 190)
             Text("Nothing here yet").font(.rounded(20, .bold)).foregroundStyle(Theme.ink)
             Text("Tap + to add a login, or import everything from Chrome or Safari in Settings.")
                 .font(.rounded(15, .medium)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)

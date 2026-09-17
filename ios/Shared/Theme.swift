@@ -1,29 +1,37 @@
 import SwiftUI
 
 enum Theme {
-    static let ink = Color(red: 0.06, green: 0.09, blue: 0.16)
-    static let muted = Color(red: 0.39, green: 0.45, blue: 0.55)
-    static let canvas = Color(red: 0.965, green: 0.969, blue: 0.992)
-    static let indigo = Color(red: 0.39, green: 0.40, blue: 0.95)
-    static let indigoDeep = Color(red: 0.31, green: 0.27, blue: 0.90)
-    static let mint = Color(red: 0.18, green: 0.83, blue: 0.75)
-    static let green = Color(red: 0.13, green: 0.77, blue: 0.37)
-    static let amber = Color(red: 0.96, green: 0.62, blue: 0.04)
-    static let rose = Color(red: 0.94, green: 0.27, blue: 0.35)
-    static let field = Color(red: 0.93, green: 0.945, blue: 0.975)
+    // Shlok palette: warm, bright and a little silly. One colour per idea, not one blue for everything.
+    static let ink = Color(red: 0.17, green: 0.10, blue: 0.25)        // deep plum
+    static let muted = Color(red: 0.50, green: 0.44, blue: 0.57)
+    static let canvas = Color(red: 1.0, green: 0.97, blue: 0.93)      // warm cream
+    static let field = Color(red: 0.98, green: 0.93, blue: 0.91)
 
-    static let gradient = LinearGradient(colors: [indigo, mint], startPoint: .topLeading, endPoint: .bottomTrailing)
-    static let spring = Animation.spring(response: 0.45, dampingFraction: 0.72)
+    static let primary = Color(red: 1.0, green: 0.31, blue: 0.47)     // coral
+    static let primaryDeep = Color(red: 0.93, green: 0.20, blue: 0.40)
+    static let tangerine = Color(red: 1.0, green: 0.60, blue: 0.24)
+    static let sunny = Color(red: 1.0, green: 0.80, blue: 0.20)
+    static let grape = Color(red: 0.49, green: 0.30, blue: 1.0)
+    static let pink = Color(red: 1.0, green: 0.36, blue: 0.66)
+    static let sky = Color(red: 0.20, green: 0.68, blue: 1.0)
+    static let mint = Color(red: 0.10, green: 0.83, blue: 0.64)
+
+    static let green = Color(red: 0.06, green: 0.73, blue: 0.51)
+    static let amber = Color(red: 0.98, green: 0.58, blue: 0.09)
+    static let rose = Color(red: 0.93, green: 0.18, blue: 0.33)
+
+    static let gradient = LinearGradient(colors: [primary, tangerine], startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let grapeGradient = LinearGradient(colors: [grape, pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let skyGradient = LinearGradient(colors: [sky, mint], startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let sunnyGradient = LinearGradient(colors: [sunny, tangerine], startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let spring = Animation.spring(response: 0.45, dampingFraction: 0.68)
 
     /// Every login gets a stable pair of colours from its title.
     static func avatarGradient(for text: String) -> LinearGradient {
         let palettes: [[Color]] = [
-            [indigo, mint],
-            [Color(red: 0.98, green: 0.45, blue: 0.52), Color(red: 0.99, green: 0.73, blue: 0.35)],
-            [Color(red: 0.55, green: 0.36, blue: 0.96), Color(red: 0.93, green: 0.47, blue: 0.86)],
-            [Color(red: 0.05, green: 0.65, blue: 0.91), Color(red: 0.39, green: 0.87, blue: 0.80)],
-            [Color(red: 0.13, green: 0.77, blue: 0.55), Color(red: 0.64, green: 0.90, blue: 0.21)],
-            [Color(red: 0.96, green: 0.35, blue: 0.62), Color(red: 0.55, green: 0.36, blue: 0.96)],
+            [primary, tangerine], [grape, pink], [sky, mint], [sunny, tangerine],
+            [pink, Color(red: 1.0, green: 0.55, blue: 0.45)], [mint, Color(red: 0.55, green: 0.88, blue: 0.20)],
+            [Color(red: 0.36, green: 0.42, blue: 1.0), sky], [Color(red: 0.75, green: 0.35, blue: 0.98), grape],
         ]
         let seed = text.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
         return LinearGradient(colors: palettes[seed % palettes.count], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -44,12 +52,14 @@ struct AuroraBackground: View {
         GeometryReader { geo in
             ZStack {
                 Theme.canvas
-                blob(Color(red: 0.78, green: 0.82, blue: 1.0), size: geo.size.width * 0.95)
-                    .offset(x: drift ? -geo.size.width * 0.30 : -geo.size.width * 0.12, y: drift ? -geo.size.height * 0.36 : -geo.size.height * 0.30)
-                blob(Color(red: 0.65, green: 0.95, blue: 0.84), size: geo.size.width * 0.85)
-                    .offset(x: drift ? geo.size.width * 0.38 : geo.size.width * 0.24, y: drift ? -geo.size.height * 0.05 : geo.size.height * 0.06)
-                blob(Color(red: 0.99, green: 0.81, blue: 0.91), size: geo.size.width * 0.80)
-                    .offset(x: drift ? -geo.size.width * 0.10 : geo.size.width * 0.06, y: drift ? geo.size.height * 0.42 : geo.size.height * 0.36)
+                blob(Color(red: 1.0, green: 0.78, blue: 0.62), size: geo.size.width * 0.95)   // peach
+                    .offset(x: drift ? -geo.size.width * 0.32 : -geo.size.width * 0.12, y: drift ? -geo.size.height * 0.38 : -geo.size.height * 0.30)
+                blob(Color(red: 1.0, green: 0.90, blue: 0.50), size: geo.size.width * 0.80)   // lemon
+                    .offset(x: drift ? geo.size.width * 0.40 : geo.size.width * 0.24, y: drift ? -geo.size.height * 0.12 : -geo.size.height * 0.02)
+                blob(Color(red: 1.0, green: 0.72, blue: 0.86), size: geo.size.width * 0.85)   // bubblegum
+                    .offset(x: drift ? -geo.size.width * 0.18 : geo.size.width * 0.04, y: drift ? geo.size.height * 0.30 : geo.size.height * 0.22)
+                blob(Color(red: 0.66, green: 0.95, blue: 0.85), size: geo.size.width * 0.75)   // mint
+                    .offset(x: drift ? geo.size.width * 0.30 : geo.size.width * 0.38, y: drift ? geo.size.height * 0.46 : geo.size.height * 0.40)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
@@ -70,7 +80,7 @@ struct CardStyle: ViewModifier {
         content
             .padding(padding)
             .background(.white.opacity(0.92), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .shadow(color: Theme.indigoDeep.opacity(0.09), radius: 18, y: 8)
+            .shadow(color: Theme.primaryDeep.opacity(0.10), radius: 18, y: 8)
     }
 }
 
@@ -86,7 +96,7 @@ extension View {
 }
 
 struct PrimaryButtonStyle: ButtonStyle {
-    var tint: LinearGradient = LinearGradient(colors: [Theme.indigo, Theme.indigoDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
+    var tint: LinearGradient = Theme.gradient
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.rounded(16))
@@ -94,7 +104,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
             .background(tint, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
-            .shadow(color: Theme.indigo.opacity(configuration.isPressed ? 0.15 : 0.35), radius: configuration.isPressed ? 4 : 12, y: configuration.isPressed ? 2 : 7)
+            .shadow(color: Theme.primary.opacity(configuration.isPressed ? 0.15 : 0.35), radius: configuration.isPressed ? 4 : 12, y: configuration.isPressed ? 2 : 7)
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
@@ -130,37 +140,36 @@ struct Avatar: View {
     }
 }
 
-/// The Safely shield, drawn so it can animate.
-struct ShieldShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        let w = rect.width, h = rect.height
-        var path = Path()
-        path.move(to: CGPoint(x: w * 0.5, y: 0))
-        path.addLine(to: CGPoint(x: w, y: h * 0.153))
-        path.addLine(to: CGPoint(x: w, y: h * 0.474))
-        path.addCurve(to: CGPoint(x: w * 0.5, y: h), control1: CGPoint(x: w, y: h * 0.716), control2: CGPoint(x: w * 0.793, y: h * 0.926))
-        path.addCurve(to: CGPoint(x: 0, y: h * 0.474), control1: CGPoint(x: w * 0.207, y: h * 0.926), control2: CGPoint(x: 0, y: h * 0.716))
-        path.addLine(to: CGPoint(x: 0, y: h * 0.153))
-        path.closeSubpath()
-        return path
+/// The Shlok mascot. `pose` picks one of the illustrations in Shared/Art.xcassets.
+struct Mascot: View {
+    enum Pose: String {
+        case shh = "Mascot", phone = "MascotPhone", key = "MascotKey", magic = "MascotMagic", empty = "MascotEmpty", party = "MascotParty"
+    }
+
+    var pose: Pose = .shh
+    var size: CGFloat = 120
+
+    var body: some View {
+        Image(pose.rawValue)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .shadow(color: Theme.primaryDeep.opacity(0.22), radius: size * 0.12, y: size * 0.08)
     }
 }
 
-struct ShieldMark: View {
-    var size: CGFloat = 64
-    var locked = true
+/// A mascot that gently bobs and tilts, so screens never sit completely still.
+struct BouncyMascot: View {
+    var pose: Mascot.Pose = .shh
+    var size: CGFloat = 120
+    @State private var up = false
 
     var body: some View {
-        ZStack {
-            ShieldShape()
-                .fill(Theme.gradient)
-                .frame(width: size * 0.79, height: size)
-                .shadow(color: Theme.indigo.opacity(0.35), radius: size * 0.2, y: size * 0.1)
-            Image(systemName: locked ? "lock.fill" : "lock.open.fill")
-                .font(.system(size: size * 0.34, weight: .bold))
-                .foregroundStyle(.white)
-                .contentTransition(.symbolEffect(.replace))
-                .offset(y: -size * 0.03)
-        }
+        Mascot(pose: pose, size: size)
+            .offset(y: up ? -size * 0.05 : size * 0.03)
+            .rotationEffect(.degrees(up ? 3 : -3))
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.7).repeatForever(autoreverses: true)) { up = true }
+            }
     }
 }

@@ -27,8 +27,8 @@ function render() {
   const linkText = $('link-text');
   if (status.bluetooth === 'off') linkText.textContent = 'Bluetooth is off on this computer — turn it on.';
   else if (status.bluetooth === 'unauthorized') linkText.textContent = 'Chrome is not allowed to use Bluetooth. Enable it in System Settings → Privacy & Security → Bluetooth.';
-  else if (!status.key) linkText.textContent = 'Looking for your Safely Key… plug it into any USB power source or battery.';
-  else if (!status.phone) linkText.textContent = 'Key connected. Now open Safely on your phone so it joins the key.';
+  else if (!status.key) linkText.textContent = 'Looking for your Shlok Key… plug it into any USB power source or battery.';
+  else if (!status.phone) linkText.textContent = 'Key connected. Now open Shlok on your phone so it joins the key.';
 
   $('pair-intro').hidden = pairing.stage !== 'idle' && pairing.stage !== 'failed';
   $('pair-wait').hidden = pairing.stage !== 'waiting-phone';

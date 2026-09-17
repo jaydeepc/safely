@@ -22,7 +22,7 @@ struct DevicesView: View {
                 Text("PAIRED BROWSERS").font(.rounded(12)).foregroundStyle(Theme.muted).padding(.top, 4).staggered(2, shown: shown)
 
                 if browsers.browsers.isEmpty {
-                    Text("No browser yet. Install the Safely extension in Chrome, then pair it here.")
+                    Text("No browser yet. Install the Shlok extension in Chrome, then pair it here.")
                         .font(.rounded(15, .medium)).foregroundStyle(Theme.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .card()
@@ -66,7 +66,7 @@ struct DevicesView: View {
                 HStack(spacing: 16) {
                     SignalBars(rssi: model.linkState.rssi)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Safely Key").font(.rounded(15)).foregroundStyle(Theme.ink)
+                        Text("Shlok Key").font(.rounded(15)).foregroundStyle(Theme.ink)
                         Text(model.linkState.rssi.map { "Signal \($0) dBm · reconnects on its own" } ?? "Connected")
                             .font(.rounded(12, .medium)).foregroundStyle(Theme.muted)
                     }
@@ -76,7 +76,7 @@ struct DevicesView: View {
                 .background(Theme.field.opacity(0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .transition(.scale(scale: 0.9).combined(with: .opacity))
             } else {
-                Text("Power your Safely Key and keep it within a few metres. The phone finds it again by itself, even with this app closed.")
+                Text("Power your Shlok Key and keep it within a few metres. The phone finds it again by itself, even with this app closed.")
                     .font(.rounded(13, .medium)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
             }
         }
@@ -90,7 +90,7 @@ struct DevicesView: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(width: 46, height: 46)
-                .background(Theme.avatarGradient(for: browser.id), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .background(Theme.grapeGradient, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 Text(browser.name).font(.rounded(16)).foregroundStyle(Theme.ink)
                 Text(browser.lastSeenAt.map { "Active \($0.formatted(.relative(presentation: .named)))" } ?? "Never used")
@@ -117,7 +117,7 @@ struct SignalBars: View {
         HStack(alignment: .bottom, spacing: 3) {
             ForEach(1...4, id: \.self) { bar in
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(bar <= level ? AnyShapeStyle(Theme.gradient) : AnyShapeStyle(Theme.muted.opacity(0.2)))
+                    .fill(bar <= level ? AnyShapeStyle(Theme.skyGradient) : AnyShapeStyle(Theme.muted.opacity(0.2)))
                     .frame(width: 5, height: CGFloat(6 + bar * 5))
             }
         }
@@ -151,22 +151,18 @@ struct PairingSheet: View {
             VStack(spacing: 22) {
                 ZStack {
                     ForEach(0..<3) { ring in
-                        Circle().stroke(Theme.indigo.opacity(0.35), lineWidth: 2)
-                            .frame(width: 110, height: 110)
-                            .scaleEffect(radar ? 2.3 : 1)
+                        Circle().stroke([Theme.sky, Theme.mint, Theme.pink][ring].opacity(0.45), lineWidth: 2.5)
+                            .frame(width: 130, height: 130)
+                            .scaleEffect(radar ? 2.1 : 1)
                             .opacity(radar ? 0 : 0.8)
                             .animation(.easeOut(duration: 2.4).repeatForever(autoreverses: false).delay(Double(ring) * 0.8), value: radar)
                     }
-                    Image(systemName: "laptopcomputer.and.iphone")
-                        .font(.system(size: 40, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 110, height: 110)
-                        .background(Theme.gradient, in: Circle())
+                    BouncyMascot(pose: .key, size: 170)
                 }
                 .frame(height: 250)
                 .onAppear { radar = true }
                 Text("Waiting for your browser").font(.rounded(24, .bold)).foregroundStyle(Theme.ink)
-                Text("In Chrome, click the Safely icon and choose **Pair with phone**. Keep your Safely Key close to both.")
+                Text("In Chrome, click the Shlok icon and choose **Pair with phone**. Keep your Shlok Key close to both.")
                     .font(.rounded(15, .medium)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
                 if !model.linkState.keyConnected {
                     Label("Your key is not connected yet", systemImage: "exclamationmark.triangle.fill")
@@ -213,6 +209,7 @@ struct PairingSheet: View {
 }
 
 struct CodeDigits: View {
+    static let colors: [Color] = [Theme.primary, Theme.tangerine, Theme.grape, Theme.sky, Theme.green, Theme.pink]
     let code: String
     @State private var shown = false
 
@@ -221,11 +218,11 @@ struct CodeDigits: View {
             ForEach(Array(code.enumerated()), id: \.offset) { index, digit in
                 Text(String(digit))
                     .font(.system(size: 32, weight: .bold, design: .monospaced))
-                    .foregroundStyle(Theme.indigoDeep)
+                    .foregroundStyle(Self.colors[index % Self.colors.count])
                     .frame(width: 46, height: 62)
                     .background(.white, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Theme.indigo.opacity(0.3), lineWidth: 1.5))
-                    .shadow(color: Theme.indigo.opacity(0.15), radius: 8, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Self.colors[index % Self.colors.count].opacity(0.45), lineWidth: 2))
+                    .shadow(color: Theme.primary.opacity(0.15), radius: 8, y: 4)
                     .padding(.leading, index == 3 ? 10 : 0)
                     .rotation3DEffect(.degrees(shown ? 0 : 90), axis: (x: 1, y: 0, z: 0))
                     .opacity(shown ? 1 : 0)
@@ -246,17 +243,15 @@ struct SuccessBurst: View {
             ForEach(0..<14, id: \.self) { i in
                 let angle = Double(i) / 14 * 2 * .pi
                 Circle()
-                    .fill([Theme.indigo, Theme.mint, Theme.amber, Theme.rose][i % 4])
+                    .fill([Theme.primary, Theme.mint, Theme.sunny, Theme.grape, Theme.sky, Theme.pink][i % 6])
                     .frame(width: i.isMultiple(of: 2) ? 9 : 6)
-                    .offset(x: fire ? cos(angle) * 105 : 0, y: fire ? sin(angle) * 105 : 0)
+                    .offset(x: fire ? cos(angle) * 135 : 0, y: fire ? sin(angle) * 135 : 0)
                     .opacity(fire ? 0 : 1)
                     .animation(.easeOut(duration: 0.9).delay(0.15), value: fire)
             }
-            Circle().fill(Theme.gradient).frame(width: 108, height: 108)
-                .shadow(color: Theme.mint.opacity(0.5), radius: 22, y: 10)
+            Mascot(pose: .party, size: 200)
                 .scaleEffect(fire ? 1 : 0.2)
-            Image(systemName: "checkmark").font(.system(size: 46, weight: .heavy)).foregroundStyle(.white)
-                .scaleEffect(fire ? 1 : 0).rotationEffect(.degrees(fire ? 0 : -60))
+                .rotationEffect(.degrees(fire ? 0 : -25))
         }
         .frame(height: 220)
         .animation(.spring(response: 0.5, dampingFraction: 0.55), value: fire)
