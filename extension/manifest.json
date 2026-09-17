@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Shlok",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Shh. Fills your passwords from your phone, through your Shlok Key. Nothing is stored in the browser.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmq6f9jcnwi3JvjmZy+i3zwtUaasTXOQw4zVKHXfzXk13pprIhshSvftEjy+sdXYtZbh50hFFwtREPL+oY6iiwQgyT/rYz0z3i9eUHBvTLQe57sHsaapdqkMZ94Lg24Dlppp2abvZUGapug6tThpC5Jct55rUbmnzawO28gJeKQ2jfhK3Zgj7cIr13tLBW9dKGum1s9qDd8AHX78sUiA68t36Qgblp4/GLtzvcq6OlB8tFctYrQvqhWVltULG0N2BfumPZoNfx0S3/hf+K0rJjAyNV3pHIem2/QnQmA1CTgquW1kPfVg/Df6mC/K1GJSKUhgo49rfNuimm+ky6dN8/QIDAQAB",
   "minimum_chrome_version": "116",

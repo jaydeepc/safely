@@ -26,6 +26,16 @@
     .login:nth-child(3n) .avatar { background: var(--grad-sky); }
     .empty { text-align: center; padding: 8px 6px 4px; }
     .loader { width: 22px; height: 22px; margin: 10px auto; border-radius: 50%; border: 3px solid #ffe0d2; border-top-color: var(--primary); animation: spin 0.8s linear infinite; }
+    .add-toggle { display: block; width: 100%; margin-top: 8px; padding: 9px; border: 1.5px dashed #ffb39c; border-radius: 12px; background: transparent; color: var(--primary-deep); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.15s var(--spring); }
+    .add-toggle:hover { background: var(--soft); transform: translateY(-1px); }
+    .add-form { display: grid; gap: 8px; margin-top: 10px; animation: rise 0.35s var(--spring); }
+    .add-form input { width: 100%; padding: 9px 11px; border: 1.5px solid var(--line); border-radius: 11px; font: inherit; font-size: 13px; outline: none; transition: border-color 0.15s; }
+    .add-form input:focus { border-color: var(--primary); }
+    .add-form .pw { display: flex; gap: 6px; }
+    .add-form .pw input { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .add-form .dice { flex: none; width: 38px; border: 0; border-radius: 11px; background: var(--grad-grape); color: #fff; font-size: 16px; cursor: pointer; transition: transform 0.3s var(--spring); }
+    .add-form .dice:active { transform: rotate(180deg) scale(0.9); }
+    .add-note { font-size: 12px; text-align: center; min-height: 16px; }
     footer { display: flex; gap: 8px; }
     footer .btn { flex: 1; padding: 9px 10px; font-size: 12.5px; border-radius: 11px; }
   </style>
@@ -62,6 +72,16 @@
     <section class="card" id="site-card" hidden>
       <div class="site"><b id="site-host"></b><span class="small muted" id="site-count"></span></div>
       <div id="logins"></div>
+      <button class="add-toggle" id="add-toggle">+ Add a login for this site</button>
+      <form class="add-form" id="add-form" hidden autocomplete="off">
+        <input id="add-user" placeholder="Username or e-mail" autocomplete="off" spellcheck="false">
+        <div class="pw">
+          <input id="add-pass" placeholder="Password" autocomplete="off" spellcheck="false">
+          <button type="button" class="dice" id="add-dice" title="Generate a strong password">✦</button>
+        </div>
+        <button class="btn primary block" id="add-save">Save to my phone</button>
+        <div class="add-note muted" id="add-note"></div>
+      </form>
     </section>
 
     <section class="card" id="settings-card" hidden>

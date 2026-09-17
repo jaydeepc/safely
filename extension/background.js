@@ -125,7 +125,7 @@ async function fetchCredentials(url, reason) {
 }
 
 // Logins typed by hand are kept in memory (never on disk) until the person answers the save prompt.
-const SAVE_TTL = 120000;
+const SAVE_TTL = 300000;
 
 async function stashSave(tabId, offer) {
   await chrome.storage.session.set({ [`save:${tabId}`]: { ...offer, at: Date.now() } });
@@ -140,6 +140,18 @@ async function pendingSave(tabId) {
     return null;
   }
   return offer;
+}
+
+async function saveToPhone(offer) {
+  try {
+    const reply = await engine.request(
+      { t: 'save', origin: offer.origin, item: { title: offer.host, url: offer.url, username: offer.username, password: offer.password } },
+      30000,
+    );
+    return { status: reply.status };
+  } catch (error) {
+    return { status: error.message };
+  }
 }
 
 // ───────────────────────────── message API ─────────────────────────────
@@ -191,16 +203,18 @@ const handlers = {
   'save:confirm': async (_, sender) => {
     const offer = sender.tab && (await pendingSave(sender.tab.id));
     if (!offer) return { status: 'expired' };
-    await chrome.storage.session.remove(`save:${sender.tab.id}`);
-    try {
-      const reply = await engine.request(
-        { t: 'save', origin: offer.origin, item: { title: offer.host, url: offer.url, username: offer.username, password: offer.password } },
-        60000,
-      );
-      return { status: reply.status };
-    } catch (error) {
-      return { status: error.message };
-    }
+    const result = await saveToPhone(offer);
+    // Unreachable phone: keep the offer so the next page can ask again. Anything else is final.
+    if (result.status === 'ok' || result.status === 'denied') await chrome.storage.session.remove(`save:${sender.tab.id}`);
+    return result;
+  },
+
+  // from the popup: add a login for the site in the active tab by hand
+  'tab:save': async ({ username, password }) => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const target = tab?.url && originOf(tab.url);
+    if (!target || !password) return { status: 'unsupported' };
+    return saveToPhone({ origin: target.origin, url: target.origin + target.pathname, host: target.host, username, password });
   },
 
   'pair:start': async () => {

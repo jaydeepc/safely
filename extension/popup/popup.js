@@ -126,6 +126,38 @@ async function lookUpSite() {
   });
 }
 
+function strongPassword(length = 20) {
+  const sets = ['abcdefghijkmnopqrstuvwxyz', 'ABCDEFGHJKLMNPQRSTUVWXYZ', '23456789', '!@#$%&*-_+?'];
+  const all = sets.join('');
+  const pick = (chars) => chars[crypto.getRandomValues(new Uint32Array(1))[0] % chars.length];
+  const out = sets.map(pick);
+  while (out.length < length) out.push(pick(all));
+  return out.sort(() => crypto.getRandomValues(new Uint8Array(1))[0] - 128).join('');
+}
+
+$('add-toggle').addEventListener('click', () => {
+  $('add-form').hidden = !$('add-form').hidden;
+  if (!$('add-form').hidden) $('add-user').focus();
+});
+$('add-dice').addEventListener('click', () => ($('add-pass').value = strongPassword()));
+$('add-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const username = $('add-user').value.trim();
+  const password = $('add-pass').value;
+  if (!password) return ($('add-note').textContent = 'Enter a password first.');
+  $('add-save').disabled = true;
+  $('add-note').textContent = 'Sending to your phone…';
+  const reply = await send({ cmd: 'tab:save', username, password });
+  $('add-save').disabled = false;
+  if (reply.status === 'ok') {
+    $('add-form').reset();
+    $('add-form').hidden = true;
+    lookUpSite();
+  } else {
+    $('add-note').textContent = reply.status === 'denied' ? 'Declined on the phone.' : 'Your phone is not reachable right now.';
+  }
+});
+
 $('pair').addEventListener('click', () => openPage('pair.html'));
 $('setup').addEventListener('click', () => openPage('pair.html'));
 $('import').addEventListener('click', () => openPage('import.html'));

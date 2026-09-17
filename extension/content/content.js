@@ -50,6 +50,14 @@
     return best;
   }
 
+  /** The field that identifies the account: an e-mail / username field if the form has one, else the text field above the password. */
+  function accountField(password) {
+    const scope = password.form || document;
+    const hinted = [...scope.querySelectorAll('input[type="email"], input[autocomplete~="username"], input[autocomplete~="email"], input[name*="email" i], input[id*="email" i], input[name*="user" i], input[id*="user" i], input[name*="login" i], input[id*="login" i]')]
+      .filter((el) => isTextLike(el) && isVisible(el) && el.value);
+    return hinted[0] || usernameFor(password);
+  }
+
   /** First step of a two step login (username now, password on the next screen). */
   function loneUsernameField() {
     const hinted = [...document.querySelectorAll('input[autocomplete~="username"], input[type="email"], input[name*="user" i], input[name*="email" i], input[name*="login" i], input[id*="user" i], input[id*="email" i], input[name="identifier"]')];
@@ -181,6 +189,7 @@
       background: linear-gradient(135deg, #FF4F79, #FF9A3D); }
     .row:nth-of-type(3n+2) .avatar { background: linear-gradient(135deg, #7C4DFF, #FF5CA8); }
     .row:nth-of-type(3n) .avatar { background: linear-gradient(135deg, #33ADFF, #19D3A2); }
+    .avatar.spark { background: linear-gradient(135deg, #FFCC33, #FF9A3D); font-size: 16px; }
     .who { min-width: 0; }
     .who b { display: block; font-size: 13.5px; font-weight: 600; color: #2B1A3F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .who span { display: block; font-size: 12px; color: #80708F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -211,12 +220,13 @@
   `;
 
   let root = null;
+  let hostEl = null;
   let badge = null;
   let chooser = null;
 
   function ui() {
     if (root) return root;
-    const host = document.createElement('safely-ui');
+    const host = (hostEl = document.createElement('safely-ui'));
     host.style.cssText = 'all: initial; position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647;';
     root = host.attachShadow({ mode: 'closed' });
     const style = document.createElement('style');
@@ -259,7 +269,7 @@
       badge.addEventListener('mousedown', (event) => event.preventDefault()); // keep focus in the field
       badge.addEventListener('click', () => {
         if (chooser) hideChooser();
-        else if (phase === 'ok') showChooser();
+        else if (phase === 'ok' || loginTarget()?.signup) showChooser();
         else ask('user');
       });
       ui().append(badge);
@@ -282,13 +292,48 @@
     asking: ['Asking your phone…', ''],
   };
 
+  function strongPassword(length = 20) {
+    const sets = ['abcdefghijkmnopqrstuvwxyz', 'ABCDEFGHJKLMNPQRSTUVWXYZ', '23456789', '!@#$%&*-_+?'];
+    const all = sets.join('');
+    const pick = (chars) => chars[crypto.getRandomValues(new Uint32Array(1))[0] % chars.length];
+    const out = sets.map(pick);
+    while (out.length < length) out.push(pick(all));
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out.join('');
+  }
+
+  function suggestRow() {
+    const row = el('button', 'row');
+    row.type = 'button';
+    const avatar = text('div', '✦');
+    avatar.className = 'avatar spark';
+    const who = el('div', 'who');
+    who.append(text('b', 'Use a strong password'), text('span', 'Shlok offers to save it when you sign up'));
+    row.append(avatar, who);
+    row.addEventListener('mousedown', (event) => event.preventDefault());
+    row.addEventListener('click', () => {
+      const password = strongPassword();
+      for (const field of passwordFields()) setValue(field, password);
+      hideChooser();
+      toast('Strong password filled', 'Finish signing up and save it to your phone');
+    });
+    return row;
+  }
+
   function showChooser() {
     hideChooser();
-    const anchor = activeField?.isConnected ? activeField : loginTarget()?.password || loginTarget()?.username;
+    const target = loginTarget();
+    const anchor = activeField?.isConnected ? activeField : target?.password || target?.username;
     if (!anchor) return;
     chooser = el('div', 'card');
     chooser.append(el('div', 'head', shield(), text('span', `SHLOK · ${location.hostname}`)));
-    if (phase === 'ok' && items?.length) {
+    if (target?.signup) chooser.append(suggestRow());
+    if (target?.signup && !(phase === 'ok' && items?.length)) {
+      // a sign-up form needs no answer from the phone
+    } else if (phase === 'ok' && items?.length) {
       items.forEach((item, index) => {
         const row = el('button', 'row');
         row.type = 'button';
@@ -336,12 +381,12 @@
   function showSavePrompt(offer) {
     if (saveCard || (!isTop && (innerWidth < 340 || innerHeight < 160))) return;
     saveCard = el('div', 'card save');
-    const title = el('h4', '', shield(), text('span', 'Save this login to Shlok?'));
+    const title = el('h4', '', shield(), text('span', offer.update ? 'Update this password in Shlok?' : 'Save this login to Shlok?'));
     const who = text('p', `${offer.username || '(no username)'} · ${offer.host}`);
     const actions = el('div', 'actions');
     const later = text('button', 'Not now');
     later.className = 'btn ghost';
-    const save = text('button', 'Save to phone');
+    const save = text('button', offer.update ? 'Update on phone' : 'Save to phone');
     save.className = 'btn primary';
     const close = () => {
       saveCard?.remove();
@@ -356,8 +401,9 @@
       save.disabled = true;
       const reply = await send({ cmd: 'save:confirm' });
       close();
-      if (reply?.status === 'ok') toast('Saved to your phone', offer.username);
-      else toast('Could not save', reply?.status === 'denied' ? 'Declined on the phone' : 'Phone not reachable');
+      if (reply?.status === 'ok') toast(offer.update ? 'Password updated on your phone' : 'Saved to your phone', offer.username);
+      else if (reply?.status === 'denied') toast('Could not save', 'Declined on the phone');
+      else toast('Phone not reachable', 'Shlok will ask again on the next page');
     });
     actions.append(later, save);
     saveCard.append(title, who, actions);
@@ -367,14 +413,16 @@
   let lastCaptured = '';
   function captureLogin() {
     if (!settings.offerSave) return;
-    const password = passwordFields().find((p) => p.value);
-    if (!password || passwordFields().length > 2) return;
-    const username = usernameFor(password)?.value || '';
+    const filled = passwordFields().filter((p) => p.value);
+    if (!filled.length || filled.length > 3) return;
+    // old / new / confirm → the new one; password / confirm → either
+    const password = filled.length === 3 ? filled[1] : filled[0];
+    const username = accountField(password)?.value || '';
     const fingerprint = `${username}\n${password.value}`;
     if (fingerprint === lastCaptured) return;
     if (items?.some((item) => item.username === username && item.password === password.value)) return; // already in the vault
     lastCaptured = fingerprint;
-    const offer = { username, password: password.value };
+    const offer = { username, password: password.value, update: !!items?.some((item) => item.username === username) };
     send({ cmd: 'save:stash', offer }).then((reply) => {
       // Single page apps do not navigate after login; classic sites show the prompt on the next page instead.
       if (reply?.ok) setTimeout(() => showSavePrompt({ ...offer, host: location.host }), 1200);
@@ -402,6 +450,9 @@
   }, true);
 
   document.addEventListener('mousedown', (event) => {
+    // Our UI lives in a closed shadow root, so a click on a chooser row arrives here with the host
+    // element as its target. Treating that as "clicked elsewhere" removed the row before its click fired.
+    if (event.target === hostEl) return;
     if (chooser && event.target !== activeField) hideChooser();
   }, true);
   document.addEventListener('keydown', (event) => {
@@ -411,7 +462,7 @@
   document.addEventListener('submit', captureLogin, true);
   document.addEventListener('click', (event) => {
     const button = event.target instanceof Element && event.target.closest('button, input[type="submit"], [role="button"]');
-    if (button && passwordFields().some((p) => p.value) && (button.form || button.closest('form') || /log|sign|continue|next/i.test(button.textContent || button.value || ''))) captureLogin();
+    if (button && passwordFields().some((p) => p.value) && (button.form || button.closest('form') || /log|sign|continue|next|create|register|join|submit|start/i.test(button.textContent || button.value || ''))) captureLogin();
   }, true);
 
   addEventListener('scroll', () => { placeBadge(); hideChooser(); }, true);
