@@ -175,37 +175,42 @@ final class MacModel: ObservableObject {
     private func fill(_ item: WireItem) {
         chooser.hide()
         guard let form = currentForm ?? AX.focusedForm() else { return }
+        Task { await perform(item, on: form) }
+    }
+
+    private func perform(_ item: WireItem, on form: FocusedForm) async {
         form.app.activate()
+        try? await Task.sleep(for: .milliseconds(80))
+        var lastField: AXUIElement?
         if let username = form.username, !item.username.isEmpty {
-            put(item.username, into: username)
+            await put(item.username, into: username)
+            lastField = username
         }
         if let password = form.password {
-            put(item.password, into: password)
-            if autoSubmit && !form.isSignup { submit(after: password) }
-        } else if let username = form.username {
-            // two-step login: only the username is on this screen; Return moves to the password step
-            put(item.username, into: username)
-            if autoSubmit { submit(after: username) }
+            await put(item.password, into: password)
+            lastField = password
         }
         lastFill = "\(item.username) · \(URL(string: form.origin)?.host ?? form.origin)"
-        note("filled \(lastFill ?? "")\(autoSubmit ? " and signed in" : "")")
-    }
-
-    /// Give the page a moment to register the value, then press Return in the field.
-    private func submit(after field: AXUIElement) {
-        AX.focus(field)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { AX.pressReturn() }
-    }
-
-    private func put(_ value: String, into field: AXUIElement) {
-        AX.focus(field)
-        let ok = AX.setValue(value, on: field)
-        // Some pages ignore AX value changes; check and fall back to typing.
-        let now = AX.string(field, kAXValueAttribute) ?? ""
-        if !ok || (now != value && !(AX.subrole(field) == kAXSecureTextFieldSubrole && now.count == value.count)) {
-            AX.setValue("", on: field)
-            AX.type(value)
+        let signIn = autoSubmit && !form.isSignup && lastField != nil
+        if signIn, let lastField {
+            AX.focus(lastField)
+            try? await Task.sleep(for: .milliseconds(400))  // let the page's scripts see the values
+            AX.pressReturn()
         }
+        note("filled \(lastFill ?? "")\(signIn ? " and pressed Return" : "")")
+    }
+
+    /// Sets a field: AX first (instant, clean), a paste when the page ignored it. Never types key by key.
+    private func put(_ value: String, into field: AXUIElement) async {
+        AX.focus(field)
+        try? await Task.sleep(for: .milliseconds(60))
+        AX.setValue(value, on: field)
+        try? await Task.sleep(for: .milliseconds(150))
+        if AX.holds(field, value) { return }
+        AX.focus(field)
+        AX.paste(value)
+        try? await Task.sleep(for: .milliseconds(250))
+        if !AX.holds(field, value) { note("field did not accept the value (\(AX.hints(field).prefix(40)))") }
     }
 
     private func note(_ s: String) {

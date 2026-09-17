@@ -126,28 +126,41 @@ enum AX {
         AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
     }
 
-    /// Types text into whatever has keyboard focus — the fallback for pages that ignore AX value changes.
-    static func type(_ text: String) {
-        let source = CGEventSource(stateID: .combinedSessionState)
-        for scalar in text.unicodeScalars {
-            var utf16 = Array(String(scalar).utf16)
-            let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true)
-            let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
-            down?.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
-            up?.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
-            down?.post(tap: .cghidEventTap)
-            up?.post(tap: .cghidEventTap)
-            usleep(4000)
+    private static func key(_ code: CGKeyCode, flags: CGEventFlags = []) {
+        let source = CGEventSource(stateID: .hidSystemState)
+        for down in [true, false] {
+            let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down)
+            event?.flags = flags
+            event?.post(tap: .cghidEventTap)
+            usleep(15000)
+        }
+    }
+
+    /// Fallback for pages that ignore AX value changes: select all, paste, restore the clipboard.
+    /// A paste is one atomic event, so the page's own scripts see it exactly as a person's paste.
+    static func paste(_ value: String) {
+        let board = NSPasteboard.general
+        let previous = board.string(forType: .string)
+        board.clearContents()
+        board.setString(value, forType: .string)
+        board.setString("", forType: NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType"))  // clipboard managers: ignore
+        key(0, flags: .maskCommand)   // ⌘A
+        key(9, flags: .maskCommand)   // ⌘V
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            board.clearContents()
+            if let previous { board.setString(previous, forType: .string) }
         }
     }
 
     /// Presses Return in whatever has focus — submits the login form the way a person would.
-    static func pressReturn() {
-        let source = CGEventSource(stateID: .combinedSessionState)
-        let down = CGEvent(keyboardEventSource: source, virtualKey: 36, keyDown: true)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: 36, keyDown: false)
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
+    static func pressReturn() { key(36) }
+
+    /// Does the field now hold `value`? Secure fields only report bullets, so their length is compared.
+    static func holds(_ field: AXUIElement, _ value: String) -> Bool {
+        let now = string(field, kAXValueAttribute) ?? ""
+        if now == value { return true }
+        if subrole(field) == kAXSecureTextFieldSubrole { return now.count == value.count && !value.isEmpty }
+        return false
     }
 
     /// What the frontmost app is showing: a login form, or nothing of interest.
