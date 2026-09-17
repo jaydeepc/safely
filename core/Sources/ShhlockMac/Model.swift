@@ -18,6 +18,7 @@ final class MacModel: ObservableObject {
     @Published var pairingUI: PairingUI = .idle
     @Published var accessibilityGranted = AX.trusted
     @Published var autofill = UserDefaults.standard.object(forKey: "autofill") as? Bool ?? true { didSet { UserDefaults.standard.set(autofill, forKey: "autofill") } }
+    @Published var autoSubmit = UserDefaults.standard.object(forKey: "autoSubmit") as? Bool ?? true { didSet { UserDefaults.standard.set(autoSubmit, forKey: "autoSubmit") } }
     @Published var lastFill: String?
     @Published var log: [String] = []
 
@@ -180,12 +181,20 @@ final class MacModel: ObservableObject {
         }
         if let password = form.password {
             put(item.password, into: password)
+            if autoSubmit && !form.isSignup { submit(after: password) }
         } else if let username = form.username {
-            // two-step login: only the username is on this screen
+            // two-step login: only the username is on this screen; Return moves to the password step
             put(item.username, into: username)
+            if autoSubmit { submit(after: username) }
         }
         lastFill = "\(item.username) · \(URL(string: form.origin)?.host ?? form.origin)"
-        note("filled \(lastFill ?? "")")
+        note("filled \(lastFill ?? "")\(autoSubmit ? " and signed in" : "")")
+    }
+
+    /// Give the page a moment to register the value, then press Return in the field.
+    private func submit(after field: AXUIElement) {
+        AX.focus(field)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { AX.pressReturn() }
     }
 
     private func put(_ value: String, into field: AXUIElement) {

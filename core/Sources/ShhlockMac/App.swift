@@ -61,6 +61,7 @@ struct MenuContent: View {
             .disabled(!(model.paired && model.unlocked && model.link.keyConnected))
             .keyboardShortcut("f", modifiers: [.command, .shift])
         Toggle("Fill automatically when one login matches", isOn: $model.autofill)
+        Toggle("Sign in after filling", isOn: $model.autoSubmit)
         Divider()
         Button(model.paired ? "Shhlock settings…" : "Set up Shhlock…") {
             openWindow(id: "setup")
@@ -118,7 +119,8 @@ struct SetupView: View {
                 GroupBox {
                     VStack(alignment: .leading, spacing: 8) {
                         Toggle("Fill automatically when exactly one login matches", isOn: $model.autofill)
-                        Text("With several matches, or when this is off, a small list appears under the field. You can also press ⌘⇧F.")
+                        Toggle("Sign in after filling (presses Return)", isOn: $model.autoSubmit)
+                        Text("With several matches, or when autofill is off, a small list appears under the field. You can also press ⌘⇧F.")
                             .font(.callout).foregroundStyle(.secondary)
                     }
                     .padding(6)

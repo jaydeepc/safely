@@ -141,6 +141,15 @@ enum AX {
         }
     }
 
+    /// Presses Return in whatever has focus — submits the login form the way a person would.
+    static func pressReturn() {
+        let source = CGEventSource(stateID: .combinedSessionState)
+        let down = CGEvent(keyboardEventSource: source, virtualKey: 36, keyDown: true)
+        let up = CGEvent(keyboardEventSource: source, virtualKey: 36, keyDown: false)
+        down?.post(tap: .cghidEventTap)
+        up?.post(tap: .cghidEventTap)
+    }
+
     /// What the frontmost app is showing: a login form, or nothing of interest.
     static func focusedForm() -> FocusedForm? {
         guard let app = NSWorkspace.shared.frontmostApplication, app.processIdentifier != getpid() else { return nil }
