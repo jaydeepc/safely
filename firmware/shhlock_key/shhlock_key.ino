@@ -183,7 +183,7 @@ class ServerCallbacks : public NimBLEServerCallbacks {
     portEXIT_CRITICAL(&connMux);
     // The centrals' own parameters (iOS/macOS use ~30 ms) work fine; asking for more made a second link flap.
     Serial.printf("[link] connected handle=%u peers=%u\n", info.getConnHandle(), s->getConnectedCount());
-    if (s->getConnectedCount() < 5) NimBLEDevice::startAdvertising();
+    if (s->getConnectedCount() < 3) NimBLEDevice::startAdvertising();  // room for one phone and two computers
   }
   void onDisconnect(NimBLEServer* s, NimBLEConnInfo& info, int reason) override {
     portENTER_CRITICAL(&connMux);
@@ -231,6 +231,9 @@ class TxCallbacks : public NimBLECharacteristicCallbacks {
     portEXIT_CRITICAL(&connMux);
     statusDirty = true;
     Serial.printf("[role] handle=%u %s %s\n", info.getConnHandle(), phone ? "phone" : "computer", sub ? "joined" : "left");
+    // One radio serves every link. iOS likes 15 ms when it can get it; that starves a second link,
+    // so ask the phone for 30–50 ms (plenty for sync) and let computers keep their own choice.
+    if (sub && phone) server->updateConnParams(info.getConnHandle(), 24, 40, 0, 500);
   }
  private:
   bool phone;

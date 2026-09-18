@@ -17,6 +17,9 @@ struct Item {
 namespace vault {
 
 static const char* FILE_PATH = "/vault.bin";
+static const char* TEMP_PATH = "/vault.new";   // a full replacement is written here and swapped in at the end
+static bool replacing = false;
+inline const char* writePath() { return replacing ? TEMP_PATH : FILE_PATH; }
 
 /// One encrypted record per login on LittleFS; only this index lives in RAM (~40 bytes per login),
 /// so a vault of a thousand logins fits the ESP32's memory.
@@ -223,7 +226,7 @@ inline int32_t appendRecord(const Item& it) {
   if (!unlocked()) return -1;
   Bytes buf = encodeItem(it);
   if (!crypto::gcmSealInPlace(key, buf, crypto::bytes(AAD_RECORD))) return -1;
-  File f = LittleFS.open(FILE_PATH, "a");
+  File f = LittleFS.open(writePath(), "a");
   if (!f) return -1;
   int32_t offset = f.size();
   uint8_t header[3] = {RECORD_MAGIC, (uint8_t)(buf.size() & 0xFF), (uint8_t)(buf.size() >> 8)};
@@ -249,7 +252,7 @@ inline bool readRecord(File& f, uint32_t offset, Item& out) {
 }
 
 inline bool readRecord(uint32_t offset, Item& out) {
-  File f = LittleFS.open(FILE_PATH, "r");
+  File f = LittleFS.open(writePath(), "r");
   if (!f) return false;
   bool ok = readRecord(f, offset, out);
   f.close();
@@ -267,6 +270,8 @@ inline bool unlock(const Bytes& vaultKey) {
   if (vaultKey.size() != 32) return false;
   index_.clear();
   key = vaultKey;
+  replacing = false;
+  LittleFS.remove(TEMP_PATH);  // an interrupted replacement is discarded; the previous vault stays intact
   if (!LittleFS.exists(FILE_PATH)) return true;
   File f = LittleFS.open(FILE_PATH, "r");
   if (!f) { key.clear(); return false; }
@@ -294,13 +299,25 @@ inline void lock() {
 
 inline void wipe() {
   lock();
+  replacing = false;
   LittleFS.remove(FILE_PATH);
+  LittleFS.remove(TEMP_PATH);
 }
 
-/// Starts a full replacement (phone sync): the file is rewritten from scratch.
+/// A full replacement (phone sync) is written to a temporary file and swapped in only when complete,
+/// so a dropped link half-way leaves the previous vault untouched.
 inline void beginReplace() {
   index_.clear();
+  LittleFS.remove(TEMP_PATH);
+  replacing = true;
+}
+
+inline bool finishReplace() {
+  if (!replacing) return false;
+  replacing = false;
   LittleFS.remove(FILE_PATH);
+  if (!LittleFS.exists(TEMP_PATH)) return true;  // an empty vault
+  return LittleFS.rename(TEMP_PATH, FILE_PATH);
 }
 
 /// Items usable on `origin`: exact host first, then same registrable domain; newest first.
@@ -319,7 +336,7 @@ inline std::vector<Item> matches(const String& origin) {
     if (a.second != b.second) return a.second > b.second;
     return a.first->updatedAt > b.first->updatedAt;
   });
-  File f = LittleFS.open(FILE_PATH, "r");
+  File f = LittleFS.open(writePath(), "r");
   if (!f) return out;
   for (auto& s : scored) {
     Item it;

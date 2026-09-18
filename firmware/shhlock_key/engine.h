@@ -477,7 +477,10 @@ inline void handleSealed(uint16_t conn, Peer& c, JsonDocument& msg) {
     out["t"] = "ack";
     out["status"] = "ok";
     out["batch"] = batch;
-    if (batch >= total) Serial.printf("[vault] replaced: %u logins\n", (unsigned)vault::count());
+    if (batch >= total) {
+      out["status"] = vault::finishReplace() ? "ok" : "error";
+      Serial.printf("[vault] replaced: %u logins\n", (unsigned)vault::count());
+    }
     out["vaultCount"] = (int)vault::count();
     reply(conn, c, out, id);
 

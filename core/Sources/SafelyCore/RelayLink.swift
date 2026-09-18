@@ -192,7 +192,7 @@ extension RelayLink: CBCentralManagerDelegate {
 
     public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral p: CBPeripheral, error: Error?) {
         guard p.identifier == peripheral?.identifier else { return }
-        log("key out of range — waiting for it to come back")
+        log("disconnected: \(error.map { "\($0)" } ?? "clean") — waiting for the key to come back")
         linkLost()
         central.connect(p, options: nil)  // never times out; fires when the key is near again
         central.scanForPeripherals(withServices: [serviceUUID], options: nil)
@@ -201,6 +201,7 @@ extension RelayLink: CBCentralManagerDelegate {
 
 extension RelayLink: CBPeripheralDelegate {
     public func peripheral(_ p: CBPeripheral, didDiscoverServices error: Error?) {
+        log("services: \(p.services?.map { $0.uuid.uuidString } ?? []) error=\(error.map { "\($0)" } ?? "none")")
         guard let service = p.services?.first(where: { $0.uuid == serviceUUID }) else {
             log("service missing: \(error?.localizedDescription ?? "not a Shhlock Key")")
             central.cancelPeripheralConnection(p)
@@ -210,6 +211,7 @@ extension RelayLink: CBPeripheralDelegate {
     }
 
     public func peripheral(_ p: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+        log("characteristics: \(service.characteristics?.count ?? 0) error=\(error.map { "\($0)" } ?? "none")")
         for c in service.characteristics ?? [] {
             switch c.uuid {
             case writeUUID: rxChar = c

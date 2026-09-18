@@ -63,6 +63,8 @@ struct MenuContent: View {
         Toggle("Fill automatically when one login matches", isOn: $model.autofill)
         Toggle("Sign in after filling", isOn: $model.autoSubmit)
         Divider()
+        Button("Diagnose the focused field") { model.diagnoseFocusedElement() }
+            .keyboardShortcut("d", modifiers: [.command, .shift])
         Button(model.paired ? "Shhlock settings…" : "Set up Shhlock…") {
             openWindow(id: "setup")
             NSApp.activate(ignoringOtherApps: true)
@@ -127,7 +129,7 @@ struct SetupView: View {
                 }
             }
 
-            DisclosureGroup("Activity log") {
+            DisclosureGroup("Activity log  (also in ~/Library/Logs/Shhlock/mac.log)") {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(Array(model.log.suffix(40).enumerated()), id: \.offset) { _, line in
